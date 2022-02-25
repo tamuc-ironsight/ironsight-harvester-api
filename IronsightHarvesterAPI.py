@@ -5,7 +5,7 @@ from pprint import pprint
 
 
 def post_request(url, data, token):
-    response = requests.post(url, json=data, headers={
+    response = requests.post(url, verify=False, json=data, headers={
                              'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
     return response
 
@@ -18,7 +18,7 @@ def createVM(vmName, claimName, imageName, userName, harvesterDomain, harvesterT
         "metadata": {
             "namespace": "default",
             "annotations": {
-                "harvesterhci.io/volumeClaimTemplates": "[{\"metadata\":{\"name\":\"" + claimName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"default/" + imageName + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"25Gi\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"longhorn-image-vk9x6\"}}]",
+                "harvesterhci.io/volumeClaimTemplates": "[{\"metadata\":{\"name\":\"" + claimName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"default/" + imageName + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"25Gi\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"longhorn-" + imageName + "\"}}]",
                 "network.harvesterhci.io/ips": "[]"
             },
             "labels": {
