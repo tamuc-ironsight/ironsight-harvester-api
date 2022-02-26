@@ -1,10 +1,12 @@
 import requests
+import urllib3
 from pprint import pprint
 
 # Make post request with JSON data
 
 
 def post_request(url, data, token):
+    urllib3.disable_warnings()
     response = requests.post(url, verify=False, json=data, headers={
                              'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
     return response
@@ -29,14 +31,14 @@ def createVM(vmName, claimName, imageName, userName, harvesterDomain, harvesterT
         },
         "__clone": True,
         "spec": {
-            "running": True,
+            "running": False,
             "template": {
                 "metadata": {
                     "annotations": {
                         "harvesterhci.io/sshNames": "[]"
                     },
                     "labels": {
-                        "harvesterhci.io/vmName": "test-api"
+                        "harvesterhci.io/vmName": vmName
                     }
                 },
                 "spec": {
@@ -82,7 +84,7 @@ def createVM(vmName, claimName, imageName, userName, harvesterDomain, harvesterT
                         }
                     },
                     "evictionStrategy": "LiveMigrate",
-                    "hostname": "test-api",
+                    "hostname": vmName,
                     "networks": [
                         {
                             "pod": {},
