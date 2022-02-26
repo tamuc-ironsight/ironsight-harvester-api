@@ -38,7 +38,7 @@ if __name__ == "__main__":
     try:
         for template in templates:
             if template['normalName'] == sys.argv[2]:
-                imageName = template['normalName']
+                imageName = template['imageName']
                 break
         if imageName == "":
             raise Exception("Invalid template")
