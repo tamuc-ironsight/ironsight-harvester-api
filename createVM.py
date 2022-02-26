@@ -25,12 +25,13 @@ if __name__ == "__main__":
             'description': templateSheet.cell(row=row, column=4).value
         })
 
-    if len(sys.argv) < 4:
-        print("Usage: python3 createVM.py [vmName] [template] [studentName]")
-        sys.exit(1)
     if "--templates" in sys.argv:
         listTemplates()
         sys.exit(0)
+
+    if len(sys.argv) < 4:
+        print("Usage: python3 createVM.py [vmName] [template] [studentName]")
+        sys.exit(1)
     
     vmName = sys.argv[1]
     imageName = ""
