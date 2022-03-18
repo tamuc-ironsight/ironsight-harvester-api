@@ -12,7 +12,7 @@ if __name__ == "__main__":
         listTemplates()
         sys.exit(0)
 
-    if len(sys.argv) < 4:
+    if len(sys.argv) != 4:
         print("Usage: python3 createVM.py [vmName] [template] [studentName]")
         sys.exit(1)
     vmName = str(sys.argv[1])

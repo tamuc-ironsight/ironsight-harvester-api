@@ -43,8 +43,10 @@ def createVM(vmName, template_choice, userName):
             if template_choice == str(template['template_name']):
                 imageName = str(template['template_image'])
                 volumeSize = str(template['template_volume_size'])
+        if imageName == "":
+            sys.exit(1)
     except:
-        print("Template not found. Here are the available templates:")
+        print("\nTemplate not found. Here are the available templates:")
         listTemplates()
         sys.exit(1)
 
@@ -157,10 +159,10 @@ def createVM(vmName, template_choice, userName):
     print("Harvester Domin: " + harvester_url.split('apis')[0])
     print("Elastic Domin: " + elastic_url)
     print("Creating VM...")
-    postResponse = post_request(harvester_url, jsonData, harvester_token)
-    print(postResponse.status_code)
-    if postResponse.status_code == 201:
-        print("VM Created Successfully")
-    else:
-        print("Error creating VM")
-        pprint(postResponse.text.strip())
+    # postResponse = post_request(harvester_url, jsonData, harvester_token)
+    # print(postResponse.status_code)
+    # if postResponse.status_code == 201:
+    #     print("VM Created Successfully")
+    # else:
+    #     print("Error creating VM")
+    #     pprint(postResponse.text.strip())
