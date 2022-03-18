@@ -38,11 +38,13 @@ def createVM(vmName, template_choice, userName):
     # Otherwise, print error and exit
     imageName = ""
     volumeSize = ""
+    templateData = {}
     try:
         for template in templatesJSON:
             if template_choice == str(template['template_name']):
                 imageName = str(template['template_image'])
                 volumeSize = str(template['template_volume_size'])
+                templateData = template
         if imageName == "":
             sys.exit(1)
     except:
@@ -55,6 +57,12 @@ def createVM(vmName, template_choice, userName):
     randomLetters = "".join(random.choice(
     string.ascii_lowercase) for i in range(5))
     claimName = vmName + "-claim" + randomLetters
+    if templateData['elastic_enrolled'] == 1:
+        print("\nElasticsearch is enrolled in this template...")
+        cloud_init_data = "#cloud-config\npackage_update: true\npackages:\n  - wget\nhostname: "+ vmName + "\nusers:\n  - name: " + userName + "\n    gecos: Student User\n    expiredate: '2032-09-01'\n    lock_passwd: false\n    passwd: $6$rounds=4096$Vd8W45YhfEELz1sq$HVp7eLIeJM.XOmN8o.RAwrg1UsqKpAXZBClx6uSX46j5Jwe4HN7cPdPYaKDLUVKYcAvjGTyRP3w26OrIo/.HD1\nruncmd:\n  - [ mkdir, /home/elastic ]\n  - [ wget, \"https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-7.16.3-linux-x86_64.tar.gz\", -O, /home/elastic/agent.tar.gz ]\n  - [ tar, -xvf, /home/elastic/agent.tar.gz, -C, /home/elastic/ ]\n  - [ ./home/elastic/elastic-agent-7.16.3-linux-x86_64/elastic-agent, install, \"-f\",\"--url=" + elastic_url + "\", \"--enrollment-token=" + elastic_token + "\", \"--insecure\" ]\n  - [\"touch\", \"/etc/cloud/cloud-init.disabled\"]"
+    else:
+        print("\nSkipping Elasticsearch enrollment...")
+        cloud_init_data = "#cloud-config\npackage_update: false\nhostname: "+ vmName + "\nusers:\n  - name: " + userName + "\n    gecos: Student User\n    expiredate: '2032-09-01'\n    lock_passwd: false\n    passwd: $6$rounds=4096$Vd8W45YhfEELz1sq$HVp7eLIeJM.XOmN8o.RAwrg1UsqKpAXZBClx6uSX46j5Jwe4HN7cPdPYaKDLUVKYcAvjGTyRP3w26OrIo/.HD1"
 
     jsonData = {
         "apiVersion": "kubevirt.io/v1",
@@ -143,7 +151,7 @@ def createVM(vmName, template_choice, userName):
                         {
                             "name": "cloudinitdisk",
                             "cloudInitConfigDrive": {
-                                "userData" : 	"#cloud-config\npackage_update: true\npackages:\n  - wget\nhostname: "+ vmName + "\nusers:\n  - name: " + userName + "\n    gecos: Student User\n    expiredate: '2032-09-01'\n    lock_passwd: false\n    passwd: $6$rounds=4096$Vd8W45YhfEELz1sq$HVp7eLIeJM.XOmN8o.RAwrg1UsqKpAXZBClx6uSX46j5Jwe4HN7cPdPYaKDLUVKYcAvjGTyRP3w26OrIo/.HD1\nruncmd:\n  - [ mkdir, /home/elastic ]\n  - [ wget, \"https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-7.16.3-linux-x86_64.tar.gz\", -O, /home/elastic/agent.tar.gz ]\n  - [ tar, -xvf, /home/elastic/agent.tar.gz, -C, /home/elastic/ ]\n  - [ ./home/elastic/elastic-agent-7.16.3-linux-x86_64/elastic-agent, install, \"-f\",\"--url=" + elastic_url + "\", \"--enrollment-token=" + elastic_token + "\", \"--insecure\" ]\n  - [\"touch\", \"/etc/cloud/cloud-init.disabled\"]"
+                                "userData" : 	cloud_init_data
                             }
                         }
                     ]
@@ -159,10 +167,10 @@ def createVM(vmName, template_choice, userName):
     print("Harvester Domin: " + harvester_url.split('apis')[0])
     print("Elastic Domin: " + elastic_url)
     print("Creating VM...")
-    # postResponse = post_request(harvester_url, jsonData, harvester_token)
-    # print(postResponse.status_code)
-    # if postResponse.status_code == 201:
-    #     print("VM Created Successfully")
-    # else:
-    #     print("Error creating VM")
-    #     pprint(postResponse.text.strip())
+    postResponse = post_request(harvester_url, jsonData, harvester_token)
+    print(postResponse.status_code)
+    if postResponse.status_code == 201:
+        print("VM Created Successfully")
+    else:
+        print("Error creating VM")
+        pprint(postResponse.text.strip())
