@@ -11,7 +11,7 @@ def post_request(url, data, token):
     return response
 
 
-def createVM(vmName, claimName, imageName, userName, harvesterDomain, harvesterToken, elasticDomain, elasticToken):
+def createVM(vmName, claimName, imageName, volumeSize, userName, harvesterDomain, harvesterToken, elasticDomain, elasticToken):
 
     jsonData = {
         "apiVersion": "kubevirt.io/v1",
@@ -19,7 +19,7 @@ def createVM(vmName, claimName, imageName, userName, harvesterDomain, harvesterT
         "metadata": {
             "namespace": "default",
             "annotations": {
-                "harvesterhci.io/volumeClaimTemplates": "[{\"metadata\":{\"name\":\"" + claimName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"default/" + imageName + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"32Gi\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"longhorn-" + imageName + "\"}}]",
+                "harvesterhci.io/volumeClaimTemplates": "[{\"metadata\":{\"name\":\"" + claimName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"default/" + imageName + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + str(volumeSize) + "Gi\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"longhorn-" + imageName + "\"}}]",
                 "network.harvesterhci.io/ips": "[]"
             },
             "labels": {
