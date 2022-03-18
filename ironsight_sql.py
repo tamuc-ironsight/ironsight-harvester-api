@@ -14,13 +14,30 @@ def query(queryString, sql_server, sql_user, sql_pass, sql_db):
         cursor = conn.cursor()
         cursor.execute(queryString)
         # Get columns for key assignment
-        for column in cursor.description:
-            keys.append(column[0])
-        for row in cursor:
-            data.append(dict(zip(keys, row)))
+        try:
+            for column in cursor.description:
+                keys.append(column[0])
+            for row in cursor:
+                data.append(dict(zip(keys, row)))
+        except:
+            pass
+        conn.commit()
         cursor.close()
         conn.close()
         return data
+    except pymysql.Error as e:
+        print("Error %d: %s" % (e.args[0], e.args[1]))
+        sys.exit(1)
+
+def query_no_return(queryString, sql_server, sql_user, sql_pass, sql_db):
+    # Connect to SQL server and store users in a list
+    try:
+        conn = pymysql.connect(host=sql_server, user=sql_user, passwd=sql_pass, db=sql_db)
+        cursor = conn.cursor()
+        cursor.execute(queryString)
+        conn.commit()
+        cursor.close()
+        conn.close()
     except pymysql.Error as e:
         print("Error %d: %s" % (e.args[0], e.args[1]))
         sys.exit(1)

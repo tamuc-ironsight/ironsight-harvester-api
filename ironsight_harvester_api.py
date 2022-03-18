@@ -169,6 +169,8 @@ def createVM(vmName, template_choice, userName):
     print("Harvester Domin: " + harvester_url.split('apis')[0])
     print("Elastic Domin: " + elastic_url)
     print("Creating VM...")
+
+    # Create VM with Harvester API
     postResponse = post_request(harvester_url, jsonData, harvester_token)
     print(postResponse.status_code)
     if postResponse.status_code == 201:
@@ -176,3 +178,23 @@ def createVM(vmName, template_choice, userName):
     else:
         print("Error creating VM")
         pprint(postResponse.text.strip())
+        sys.exit(1)
+
+    # Add VM to the MySQL database
+    port = -1
+    # Get a free port between 5900 and 65535
+    used_ports = ironsight_sql.query("SELECT port_number FROM virtual_machines", sql_server, sql_user, sql_pass, sql_db)
+    # Map list of dictionaries to list of ports
+    used_ports = [x['port_number'] for x in used_ports]
+    for i in range(5900, 65535):
+        if i not in used_ports:
+            port = i
+            break
+    if port == -1:
+        print("Error: No free ports available")
+        sys.exit(1)
+    print("Adding VM to the MySQL database...")
+    query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, lab_num, user_name, template_name) VALUES ('" + vmName + "', '" + vmName + "-harvester-name', '" + str(port) + "', '1', '" + userName + "', '" + template_choice + "')")
+    print(query)
+    ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db) 
+    print("VM Added to the MySQL database with port: " + str(port))
