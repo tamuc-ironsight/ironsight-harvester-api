@@ -1,10 +1,9 @@
 import requests
 import urllib3
 from pprint import pprint
+import ironsight_sql
 
 # Make post request with JSON data
-
-
 def post_request(url, data, token):
     urllib3.disable_warnings()
     response = requests.post(url, verify=False, json=data, headers={
@@ -20,7 +19,7 @@ def createVM(vmName, claimName, imageName, userName, harvesterDomain, harvesterT
         "metadata": {
             "namespace": "default",
             "annotations": {
-                "harvesterhci.io/volumeClaimTemplates": "[{\"metadata\":{\"name\":\"" + claimName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"default/" + imageName + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"25Gi\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"longhorn-" + imageName + "\"}}]",
+                "harvesterhci.io/volumeClaimTemplates": "[{\"metadata\":{\"name\":\"" + claimName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"default/" + imageName + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"32Gi\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"longhorn-" + imageName + "\"}}]",
                 "network.harvesterhci.io/ips": "[]"
             },
             "labels": {
@@ -78,7 +77,7 @@ def createVM(vmName, claimName, imageName, userName, harvesterDomain, harvesterT
                         },
                         "resources": {
                             "limits": {
-                                "memory": "2Gi",
+                                "memory": "8Gi",
                                 "cpu": 4
                             }
                         }
