@@ -53,7 +53,7 @@ def createVM(vmName, template_choice, userName):
         sys.exit(1)
 
     # Configure VM properties
-    vmName = vmName + "-" + userName
+    vmName = vmName.replace("_", "-") + "-" + userName.replace("_", "-")
     randomLetters = "".join(random.choice(
     string.ascii_lowercase) for i in range(5))
     claimName = vmName + "-claim" + randomLetters
@@ -173,6 +173,9 @@ def createVM(vmName, template_choice, userName):
     # Create VM with Harvester API
     postResponse = post_request(harvester_url, jsonData, harvester_token)
     print(postResponse.status_code)
+    if postResponse.status_code == 409:
+        print("VM already exists...")
+        sys.exit(1)
     if postResponse.status_code == 201:
         print("VM Created Successfully")
     else:
@@ -195,6 +198,6 @@ def createVM(vmName, template_choice, userName):
         sys.exit(1)
     print("Adding VM to the MySQL database...")
     query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, lab_num, user_name, template_name) VALUES ('" + vmName + "', '" + vmName + "-harvester-name', '" + str(port) + "', '1', '" + userName + "', '" + template_choice + "')")
-    print(query)
+    # print(query)
     ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db) 
     print("VM Added to the MySQL database with port: " + str(port))
