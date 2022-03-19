@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import requests
 import urllib3
 from pprint import pprint
@@ -19,6 +21,19 @@ with open('config.json') as config_file:
     elastic_url = config['elasticsearch_url']
     elastic_token = config['elasticsearch_api_token']
 
+# SQL utility functions
+def get_vms():
+    vmsJSON = ironsight_sql.query("SELECT * FROM virtual_machines", sql_server, sql_user, sql_pass, sql_db)
+    return vmsJSON
+
+def get_templates():
+    templatesJSON = ironsight_sql.query("SELECT * FROM templates", sql_server, sql_user, sql_pass, sql_db)
+    return templatesJSON
+
+def list_templates():
+    templatesJSON = get_templates()
+    ironsight_sql.pretty_response(templatesJSON)
+
 # Make post request with JSON data
 def post_request(url, data, token):
     urllib3.disable_warnings()
@@ -26,11 +41,8 @@ def post_request(url, data, token):
                              'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
     return response
 
-def listTemplates():
-    templatesJSON = ironsight_sql.query("SELECT * FROM templates", sql_server, sql_user, sql_pass, sql_db)
-    ironsight_sql.pretty_response(templatesJSON)
 
-def createVM(vmName, template_choice, userName):
+def create_vm(vm_name, template_choice, user_name):
     # Load in templates from SQL
     templatesJSON = ironsight_sql.query("SELECT * FROM templates", sql_server, sql_user, sql_pass, sql_db)
 
@@ -49,21 +61,25 @@ def createVM(vmName, template_choice, userName):
             sys.exit(1)
     except:
         print("\nTemplate not found. Here are the available templates:")
-        listTemplates()
+        list_templates()
         sys.exit(1)
 
     # Configure VM properties
     # Change username to first letter of first name and last name
-    userNameShort = userName[0].lower() + userName.split("_")[1].lower()
-    vmName = vmName.replace("_", "-") + "-" + userNameShort.replace("_", "-")
-    randomLetters = "".join(random.choice(
+    if "_" in user_name:
+        user_name_short = user_name[0].lower() + user_name.split("_")[1].lower()
+    else:
+        user_name_short = user_name.lower()
+    vm_name = vm_name.replace("_", "-")
+    vm_name = vm_name + "-" + user_name_short
+    random_letters = "".join(random.choice(
     string.ascii_lowercase) for i in range(5))
-    claimName = vmName + "-claim" + randomLetters
+    claim_name = vm_name + "-claim" + random_letters
 
     # Determine if VM should be enrolled in Elasticsearch or not
     if templateData['elastic_enrolled'] == 1:
         print("\nElasticsearch is enrolled in this template...")
-        cloud_init_data = "#cloud-config\npackage_update: true\npackages:\n  - wget\nhostname: "+ vmName + "\nusers:\n  - name: " + userName + "\n    gecos: " + userName + "\n    expiredate: '2032-09-01'\n    lock_passwd: false\n    passwd: $6$rounds=4096$Vd8W45YhfEELz1sq$HVp7eLIeJM.XOmN8o.RAwrg1UsqKpAXZBClx6uSX46j5Jwe4HN7cPdPYaKDLUVKYcAvjGTyRP3w26OrIo/.HD1\nruncmd:\n  - [ mkdir, /home/elastic ]\n  - [ wget, \"https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-7.16.3-linux-x86_64.tar.gz\", -O, /home/elastic/agent.tar.gz ]\n  - [ tar, -xvf, /home/elastic/agent.tar.gz, -C, /home/elastic/ ]\n  - [ ./home/elastic/elastic-agent-7.16.3-linux-x86_64/elastic-agent, install, \"-f\",\"--url=" + elastic_url + "\", \"--enrollment-token=" + elastic_token + "\", \"--insecure\" ]\n  - [\"touch\", \"/etc/cloud/cloud-init.disabled\"]"
+        cloud_init_data = "#cloud-config\npackage_update: true\npackages:\n  - wget\nhostname: "+ vm_name + "\nusers:\n  - name: " + user_name + "\n    gecos: " + user_name + "\n    expiredate: '2032-09-01'\n    lock_passwd: false\n    passwd: $6$rounds=4096$Vd8W45YhfEELz1sq$HVp7eLIeJM.XOmN8o.RAwrg1UsqKpAXZBClx6uSX46j5Jwe4HN7cPdPYaKDLUVKYcAvjGTyRP3w26OrIo/.HD1\nruncmd:\n  - [ mkdir, /home/elastic ]\n  - [ wget, \"https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-7.16.3-linux-x86_64.tar.gz\", -O, /home/elastic/agent.tar.gz ]\n  - [ tar, -xvf, /home/elastic/agent.tar.gz, -C, /home/elastic/ ]\n  - [ ./home/elastic/elastic-agent-7.16.3-linux-x86_64/elastic-agent, install, \"-f\",\"--url=" + elastic_url + "\", \"--enrollment-token=" + elastic_token + "\", \"--insecure\" ]\n  - [\"touch\", \"/etc/cloud/cloud-init.disabled\"]"
     else:
         print("\nSkipping Elasticsearch enrollment...")
         # cloud_init_data = "#cloud-config\npackage_update: false\nhostname: "+ vmName + "\nusers:\n  - name: " + userName + "\n    gecos: Student User\n    expiredate: '2032-09-01'\n    lock_passwd: false\n    passwd: $6$rounds=4096$Vd8W45YhfEELz1sq$HVp7eLIeJM.XOmN8o.RAwrg1UsqKpAXZBClx6uSX46j5Jwe4HN7cPdPYaKDLUVKYcAvjGTyRP3w26OrIo/.HD1"
@@ -75,14 +91,14 @@ def createVM(vmName, template_choice, userName):
         "metadata": {
             "namespace": "default",
             "annotations": {
-                "harvesterhci.io/volumeClaimTemplates": "[{\"metadata\":{\"name\":\"" + claimName + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"default/" + imageName + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + str(volumeSize) + "Gi\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"longhorn-" + imageName + "\"}}]",
+                "harvesterhci.io/volumeClaimTemplates": "[{\"metadata\":{\"name\":\"" + claim_name + "\",\"annotations\":{\"harvesterhci.io/imageId\":\"default/" + imageName + "\"}},\"spec\":{\"accessModes\":[\"ReadWriteMany\"],\"resources\":{\"requests\":{\"storage\":\"" + str(volumeSize) + "Gi\"}},\"volumeMode\":\"Block\",\"storageClassName\":\"longhorn-" + imageName + "\"}}]",
                 "network.harvesterhci.io/ips": "[]"
             },
             "labels": {
                 "harvesterhci.io/creator": "harvester",
                 "harvesterhci.io/os": "linux"
             },
-            "name": vmName
+            "name": vm_name
         },
         "__clone": True,
         "spec": {
@@ -93,7 +109,7 @@ def createVM(vmName, template_choice, userName):
                         "harvesterhci.io/sshNames": "[]"
                     },
                     "labels": {
-                        "harvesterhci.io/vmName": vmName
+                        "harvesterhci.io/vmName": vm_name
                     }
                 },
                 "spec": {
@@ -139,7 +155,7 @@ def createVM(vmName, template_choice, userName):
                         }
                     },
                     "evictionStrategy": "LiveMigrate",
-                    "hostname": vmName,
+                    "hostname": vm_name,
                     "networks": [
                         {
                             "pod": {},
@@ -150,7 +166,7 @@ def createVM(vmName, template_choice, userName):
                         {
                             "name": "disk-0",
                             "persistentVolumeClaim": {
-                                "claimName": claimName
+                                "claimName": claim_name
                             }
                         },
                         {
@@ -165,10 +181,10 @@ def createVM(vmName, template_choice, userName):
         }
     }
 
-    print("VM Name: " + vmName)
-    print("Claim Name: " + claimName)
+    print("VM Name: " + vm_name)
+    print("Claim Name: " + claim_name)
     print("Image Name: " + imageName)
-    print("User Name: " + userName)
+    print("User Name: " + user_name)
     print("Harvester Domin: " + harvester_url.split('apis')[0])
     print("Elastic Domin: " + elastic_url)
     print("Creating VM...")
@@ -200,7 +216,20 @@ def createVM(vmName, template_choice, userName):
         print("Error: No free ports available")
         sys.exit(1)
     print("Adding VM to the MySQL database...")
-    query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, lab_num, user_name, template_name) VALUES ('" + vmName + "', '" + vmName + "-harvester-name', '" + str(port) + "', '1', '" + userName + "', '" + template_choice + "')")
+    query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, lab_num, user_name, template_name) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '1', '" + user_name + "', '" + template_choice + "')")
     # print(query)
     ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db) 
     print("VM Added to the MySQL database with port: " + str(port))
+
+if __name__ == "__main__":
+    print("This script is a module for the Ironsight project. It is not meant to be run directly.")
+    print("\nShowing configuration:")
+    print("SQL Server: " + sql_server)
+    print("SQL User: " + sql_user)
+    print("SQL Password: " + ("Set" if sql_pass else "Not Set"))
+    print("SQL Database: " + sql_db)
+    print("Harvester URL: " + harvester_url)
+    print("Elastic URL: " + elastic_url)
+    print("Harvester Token: " + ("Set" if harvester_token else "Not Set"))
+    print("Elastic Token: " + ("Set" if elastic_token else "Not Set"))
+    sys.exit(1)
