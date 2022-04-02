@@ -73,6 +73,8 @@ def get_labs():
 
 def get_tags():
     tagsJSON = ironsight_sql.query("SELECT * FROM tags", sql_server, sql_user, sql_pass, sql_db)
+    # Sort by tag_id
+    tagsJSON.sort(key=lambda x: x['tag_id'])
     return json.dumps(tagsJSON)
 
 # Print templates nicely in console
