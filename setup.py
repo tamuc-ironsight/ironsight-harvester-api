@@ -26,8 +26,11 @@ if __name__ == "__main__":
     "harvester_api_url": "",
     "harvester_api_token": "",
 
+    "elastic_fleet_url": "",
+    "elastic_fleet_api_token": "",
+    "elastic_version": "",
+
     "elasticsearch_url": "",
-    "elasticsearch_api_token": "",
-    "elastic_version": ""
+    "elasticsearch_api_token": ""
 }''')
     print("Config file created.")

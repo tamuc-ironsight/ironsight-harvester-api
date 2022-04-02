@@ -33,8 +33,8 @@ with open(config_path) as config_file:
     sql_db = config['sql_db']
     harvester_token = config['harvester_api_token']
     harvester_url = config['harvester_api_url']
-    elastic_url = config['elasticsearch_url']
-    elastic_token = config['elasticsearch_api_token']
+    elastic_url = config['elastic_fleet_url']
+    elastic_token = config['elastic_fleet_api_token']
     elastic_version = config['elastic_version']
 
 # SQL utility functions
