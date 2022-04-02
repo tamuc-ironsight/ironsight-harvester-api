@@ -129,7 +129,7 @@ if __name__ == '__main__':
             sql_pass = config['sql_pass']
             sql_db = config['sql_db']
         print("Which test to run? (1-4): ")
-        print("\n1. List all users\n2. List all templates\n3. List all VMs\n4. List all labs")
+        print("\n1. List all users\n2. List all templates\n3. List all VMs\n4. List all labs\n5. List all tags")
         userChoice = str(input("Input: "))
         if userChoice == '1':
             queryString = "SELECT * FROM users"
@@ -139,6 +139,8 @@ if __name__ == '__main__':
             queryString = "SELECT * FROM virtual_machines"
         elif userChoice == '4':
             queryString = "SELECT * FROM labs"
+        elif userChoice == '5':
+            queryString = "SELECT * FROM tags"
         else:
             print("Invalid choice")
             sys.exit(1)

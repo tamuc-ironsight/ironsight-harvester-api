@@ -71,6 +71,10 @@ def get_labs():
         lab['date_end'] = str(lab['date_end'])
     return json.dumps(labsJSON)
 
+def get_tags():
+    tagsJSON = ironsight_sql.query("SELECT * FROM tags", sql_server, sql_user, sql_pass, sql_db)
+    return json.dumps(tagsJSON)
+
 # Print templates nicely in console
 def list_templates():
     templatesJSON = get_templates()
