@@ -50,6 +50,7 @@ def get_templates():
     # Pull out the tags
     for template in templatesJSON:
         template['tags'] = json.loads(template['tags'])
+        template['template_data'] = json.loads(template['template_data'])
     
     return json.dumps(templatesJSON)
 
