@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 import pymysql
 import json
 import sys
@@ -91,13 +93,28 @@ def pretty_response(queryResponse):
         print()
     print("-" * (len(keys) * 20 + len(keys) - 1))
 
+# Determine if config.json is here or in parent directory
+def get_config():
+    try:
+        with open('config.json') as f:
+            return "config.json"
+    except FileNotFoundError:
+        try:
+            with open('../config.json') as f:
+                return "../config.json"
+        except FileNotFoundError:
+            print("Config file not found. Please create config.json in current directory or parent directory.")
+            exit(1)
+
 if __name__ == '__main__':
     print("This is a module and should not be run directly.")
     unitTest = input("Run unit tests? (y/n): ")
     if unitTest.lower() == 'y':
         # Setup unit tests
         # Get config.json and set variables
-        with open('config.json') as config_file:
+        # Load in configuration file
+        config_path = get_config()
+        with open(config_path) as config_file:
             config = json.load(config_file)
             sql_server = config['sql_server']
             sql_user = config['sql_user']
@@ -109,7 +126,7 @@ if __name__ == '__main__':
         if userChoice == '1':
             queryString = "SELECT * FROM users"
         elif userChoice == '2':
-            queryString = "SELECT * FROM templates"
+            queryString = "SELECT * FROM vm_templates"
         elif userChoice == '3':
             queryString = "SELECT * FROM virtual_machines"
         elif userChoice == '4':
@@ -128,7 +145,8 @@ if __name__ == '__main__':
         queryResponse = query(queryString, sql_server, sql_user, sql_pass, sql_db)
         
         # Pretty print the response
-        pretty_response(queryResponse)
+        # pretty_response(queryResponse)
+        print(queryResponse)
         print("\nQuery successful.\n")
         
         # Print the response in JSON format
