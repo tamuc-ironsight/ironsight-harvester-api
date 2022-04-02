@@ -44,7 +44,11 @@ def get_vms():
 
 def get_templates():
     templatesJSON = ironsight_sql.query("SELECT * FROM vm_templates", sql_server, sql_user, sql_pass, sql_db)
-    return templatesJSON
+    # Pull out the tags
+    for template in templatesJSON:
+        template['tags'] = json.loads(template['tags'])
+    
+    return json.dumps(templatesJSON)
 
 def get_users():
     usersJSON = ironsight_sql.query("SELECT * FROM users", sql_server, sql_user, sql_pass, sql_db)

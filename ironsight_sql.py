@@ -50,7 +50,15 @@ def pretty_response(queryResponse):
     if len(queryResponse) == 0:
         print("No results found.")
         return
-    keys = list(queryResponse[0].keys())
+    # Handle edge case with nested JSON
+    try:
+        keys = list(queryResponse[0].keys())
+    except:
+        queryResponse = json.loads(queryResponse)
+        # Delete tags from response
+        for entry in queryResponse:
+            del entry['tags']
+        keys = list(queryResponse[0].keys())
     values = []
 
     # Convert from JSON response to list of dictionaries
