@@ -10,7 +10,7 @@ import string
 import sys
 
 # Load in configuration file
-with open('config.json') as config_file:
+with open('../config.json') as config_file:
     config = json.load(config_file)
     sql_server = config['sql_server']
     sql_user = config['sql_user']
@@ -24,12 +24,21 @@ with open('config.json') as config_file:
 # SQL utility functions
 def get_vms():
     vmsJSON = ironsight_sql.query("SELECT * FROM virtual_machines", sql_server, sql_user, sql_pass, sql_db)
-    return vmsJSON
+    return json.dumps(vmsJSON)
 
 def get_templates():
     templatesJSON = ironsight_sql.query("SELECT * FROM templates", sql_server, sql_user, sql_pass, sql_db)
-    return templatesJSON
+    return json.dumps(templatesJSON)
 
+def get_users():
+    usersJSON = ironsight_sql.query("SELECT * FROM users", sql_server, sql_user, sql_pass, sql_db)
+    return json.dumps(usersJSON)
+
+def get_labs():
+    labsJSON = ironsight_sql.query("SELECT * FROM labs", sql_server, sql_user, sql_pass, sql_db)
+    return json.dumps(labsJSON)
+
+# Print templates nicely in console
 def list_templates():
     templatesJSON = get_templates()
     ironsight_sql.pretty_response(templatesJSON)
