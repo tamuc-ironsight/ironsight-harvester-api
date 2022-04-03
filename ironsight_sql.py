@@ -155,8 +155,7 @@ if __name__ == '__main__':
         queryResponse = query(queryString, sql_server, sql_user, sql_pass, sql_db)
         
         # Pretty print the response
-        # pretty_response(queryResponse)
-        print(queryResponse)
+        pretty_response(queryResponse)
         print("\nQuery successful.\n")
         
         # Print the response in JSON format
