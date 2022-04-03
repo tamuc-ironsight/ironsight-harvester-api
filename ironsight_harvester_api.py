@@ -42,7 +42,7 @@ def get_vms():
     vmsJSON = ironsight_sql.query("SELECT * FROM virtual_machines", sql_server, sql_user, sql_pass, sql_db)
     # Pull out the tags
     for template in vmsJSON:
-        template['tags'] = json.loads(template['tags'])
+        template['tags'] = json.loads(template['tags'])['tags']
     return json.dumps(vmsJSON)
 
 def get_templates():
@@ -58,14 +58,14 @@ def get_users():
     usersJSON = ironsight_sql.query("SELECT * FROM users", sql_server, sql_user, sql_pass, sql_db)
     # Pull out the tags
     for template in usersJSON:
-        template['tags'] = json.loads(template['tags'])
+        template['tags'] = json.loads(template['tags'])['tags']
     return json.dumps(usersJSON)
 
 def get_labs():
     labsJSON = ironsight_sql.query("SELECT * FROM labs", sql_server, sql_user, sql_pass, sql_db)
     # Pull out the tags
     for template in labsJSON:
-        template['tags'] = json.loads(template['tags'])
+        template['tags'] = json.loads(template['tags'])['tags']
     # Fix datetime.datetime object to make it JSON serializable
     for lab in labsJSON:
         lab['date_start'] = str(lab['date_start'])
