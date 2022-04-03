@@ -49,7 +49,7 @@ def get_templates():
     templatesJSON = ironsight_sql.query("SELECT * FROM vm_templates", sql_server, sql_user, sql_pass, sql_db)
     # Pull out the tags
     for template in templatesJSON:
-        template['tags'] = json.loads(template['tags'])
+        template['tags'] = json.loads(template['tags'])['tags']
         template['template_data'] = json.loads(template['template_data'])
     
     return json.dumps(templatesJSON)
