@@ -72,15 +72,30 @@ def get_vms():
     for template in vmsJSON:
         template['tags'] = json.loads(template['tags'])['tags']
     
+    # Populate the users field
+    for vm in vmsJSON:
+        vm['users'] = []
+
     # Handle the many-to-many relationship between virtual machines and users ("virtual_machine_has_users")
     # Stored like this: [{'vm_name': 'android-tharrison', 'user_name': 'tyler_harrison'}]
     virtual_machine_has_users = ironsight_sql.query("SELECT * FROM virtual_machine_has_users", sql_server, sql_user, sql_pass, sql_db)
     for vm_user in virtual_machine_has_users:
         for vm in vmsJSON:
-            vm['users'] = []
             if vm_user['vm_name'] == vm['vm_name']:
                 vm['users'].append(vm_user['user_name'])
-    
+
+    # Populate labs with empty list
+    for vm in vmsJSON:
+        vm['labs'] = []
+
+    # Handle the many-to-many relationship between virtual machines and labs ("virtual_machine_has_labs")
+    # Stored like this: [{'vm_name': 'android-tharrison', 'lab_num': '1'}]
+    virtual_machine_has_labs = ironsight_sql.query("SELECT * FROM virtual_machine_has_labs", sql_server, sql_user, sql_pass, sql_db)
+    for vm_lab in virtual_machine_has_labs:
+        for vm in vmsJSON:
+            if vm_lab['vm_name'] == vm['vm_name']:
+                vm['labs'].append(vm_lab['lab_num'])
+
     return json.dumps(vmsJSON)
 
 def get_templates():
@@ -89,6 +104,18 @@ def get_templates():
     for template in templatesJSON:
         template['tags'] = json.loads(template['tags'])['tags']
         template['template_data'] = json.loads(template['template_data'])
+
+    # Populate labs with empty list
+    for template in templatesJSON:
+        template['labs'] = []
+
+    # Handle the many-to-many relationship between templates and labs ("labs_has_vm_templates")
+    # Stored like this: [{'id': '1', 'lab_num': '1', 'template_name': 'android'}]
+    labs_has_vm_templates = ironsight_sql.query("SELECT * FROM labs_has_vm_templates", sql_server, sql_user, sql_pass, sql_db)
+    for lab_template in labs_has_vm_templates:
+        for template in templatesJSON:
+            if lab_template['template_name'] == template['template_name']:
+                template['labs'].append(lab_template['lab_num'])
     
     return json.dumps(templatesJSON)
 
@@ -98,12 +125,15 @@ def get_users():
     for template in usersJSON:
         template['tags'] = json.loads(template['tags'])['tags']
 
+    # Populate labs with empty list
+    for user in usersJSON:
+        user['virtual_machines'] = []
+
     # Handle the many-to-many relationship between virtual machines and users ("virtual_machine_has_users")
     # Stored like this: [{'vm_name': 'android-tharrison', 'user_name': 'tyler_harrison'}]
     virtual_machine_has_users = ironsight_sql.query("SELECT * FROM virtual_machine_has_users", sql_server, sql_user, sql_pass, sql_db)
     for vm_user in virtual_machine_has_users:
         for user in usersJSON:
-            user['virtual_machines'] = []
             if vm_user['user_name'] == user['user_name']:
                 user['virtual_machines'].append(vm_user['vm_name'])
 
@@ -118,6 +148,39 @@ def get_labs():
     for lab in labsJSON:
         lab['date_start'] = str(lab['date_start'])
         lab['date_end'] = str(lab['date_end'])
+
+    # Populate labs with empty lists
+    for lab in labsJSON:
+        lab['virtual_machines'] = []
+        lab['templates'] = []
+
+    # Handle the many-to-many relationship between virtual machines and labs ("virtual_machine_has_labs")
+    # Stored like this: [{'vm_name': 'android-tharrison', 'lab_num': '1'}]
+    virtual_machine_has_labs = ironsight_sql.query("SELECT * FROM virtual_machine_has_labs", sql_server, sql_user, sql_pass, sql_db)
+    for vm_lab in virtual_machine_has_labs:
+        for lab in labsJSON:
+            if vm_lab['lab_num'] == lab['lab_num']:
+                lab['virtual_machines'].append(vm_lab['vm_name'])
+
+    # Handle the many-to-many relationship between virtual machines and templates ("labs_has_vm_templates")
+    # Stored like this: [{'id': '1', 'lab_num': '1', 'template_name': 'android'}]
+    labs_has_vm_templates = ironsight_sql.query("SELECT * FROM labs_has_vm_templates", sql_server, sql_user, sql_pass, sql_db)
+    for lab_template in labs_has_vm_templates:
+        for lab in labsJSON:
+            if lab_template['lab_num'] == lab['lab_num']:
+                lab['templates'].append(lab_template['template_name'])
+
+    # Use get_vms() to get the users for each lab
+    vmsJSON = get_vms()
+    vms = json.loads(vmsJSON)
+    for lab in labsJSON:
+        lab['users'] = []
+        for vm in vms:
+            if lab['lab_num'] in vm['labs']:
+                lab['users'] += vm['users']
+                # Remove duplicates
+                lab['users'] = list(set(lab['users']))
+    
     return json.dumps(labsJSON)
 
 # Print templates nicely in console
