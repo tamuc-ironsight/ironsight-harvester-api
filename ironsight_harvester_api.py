@@ -38,11 +38,49 @@ with open(config_path) as config_file:
     elastic_version = config['elastic_version']
 
 # SQL utility functions
+def get_tags():
+    tagsJSON = ironsight_sql.query("SELECT * FROM tags", sql_server, sql_user, sql_pass, sql_db)
+    # Sort by tag_id
+    tagsJSON.sort(key=lambda x: x['tag_id'])
+    return json.dumps(tagsJSON)
+
+# Example:
+    # {
+    #     "vm_name": "android-tharrison",
+    #     "harvester_vm_name": "android-tharrison-harvester-name",
+    #     "port_number": 5904,
+    #     "elastic_agent_id": null,
+    #     "template_name": "android",
+    #     "tags": [
+    #         {
+    #             "tag": "android",
+    #             "type": "os",
+    #             "tag_id": 10
+    #         },
+    #         {
+    #             "tag": "tyler_harrison",
+    #             "type": "user",
+    #             "tag_id": 9
+    #         }
+    #     ],
+    #     "users": []
+    # }
+
 def get_vms():
     vmsJSON = ironsight_sql.query("SELECT * FROM virtual_machines", sql_server, sql_user, sql_pass, sql_db)
     # Pull out the tags
     for template in vmsJSON:
         template['tags'] = json.loads(template['tags'])['tags']
+    
+    # Handle the many-to-many relationship between virtual machines and users ("virtual_machine_has_users")
+    # Stored like this: [{'vm_name': 'android-tharrison', 'user_name': 'tyler_harrison'}]
+    virtual_machine_has_users = ironsight_sql.query("SELECT * FROM virtual_machine_has_users", sql_server, sql_user, sql_pass, sql_db)
+    for vm_user in virtual_machine_has_users:
+        for vm in vmsJSON:
+            vm['users'] = []
+            if vm_user['vm_name'] == vm['vm_name']:
+                vm['users'].append(vm_user['user_name'])
+    
     return json.dumps(vmsJSON)
 
 def get_templates():
@@ -59,6 +97,16 @@ def get_users():
     # Pull out the tags
     for template in usersJSON:
         template['tags'] = json.loads(template['tags'])['tags']
+
+    # Handle the many-to-many relationship between virtual machines and users ("virtual_machine_has_users")
+    # Stored like this: [{'vm_name': 'android-tharrison', 'user_name': 'tyler_harrison'}]
+    virtual_machine_has_users = ironsight_sql.query("SELECT * FROM virtual_machine_has_users", sql_server, sql_user, sql_pass, sql_db)
+    for vm_user in virtual_machine_has_users:
+        for user in usersJSON:
+            user['virtual_machines'] = []
+            if vm_user['user_name'] == user['user_name']:
+                user['virtual_machines'].append(vm_user['vm_name'])
+
     return json.dumps(usersJSON)
 
 def get_labs():
@@ -71,12 +119,6 @@ def get_labs():
         lab['date_start'] = str(lab['date_start'])
         lab['date_end'] = str(lab['date_end'])
     return json.dumps(labsJSON)
-
-def get_tags():
-    tagsJSON = ironsight_sql.query("SELECT * FROM tags", sql_server, sql_user, sql_pass, sql_db)
-    # Sort by tag_id
-    tagsJSON.sort(key=lambda x: x['tag_id'])
-    return json.dumps(tagsJSON)
 
 # Print templates nicely in console
 def list_templates():
