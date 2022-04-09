@@ -8,6 +8,7 @@ import json
 import random
 import string
 import sys
+import time
 
 # Determine if config.json is here or in parent directory
 def get_config():
@@ -385,6 +386,12 @@ def create_vm(vm_name, template_choice, user_name):
 
 def get_metrics():
     query_url = harvester_url + "/v1/harvester/metrics.k8s.io.nodes"
+    getResponse = get_request(query_url, harvester_token)
+    print(getResponse.text)
+    sys.exit(1)
+
+def get_cpu_usage(start_time, end_time):
+    query_url = harvester_url + f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=1%20-%20avg(irate(%7B__name__%3D~%22node_cpu_seconds_total%7Cwindows_cpu_time_total%22%2Cmode%3D%22idle%22%7D%5B240s%5D))%20by%20(instance)&start={start_time}&end={end_time}&step=60"
     getResponse = get_request(query_url, harvester_token)
     print(getResponse.text)
     sys.exit(1)
