@@ -195,6 +195,12 @@ def post_request(url, data, token):
                              'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
     return response
 
+def get_request(url, token):
+    urllib3.disable_warnings()
+    response = requests.get(url, verify=False, headers={
+                            'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
+    return response
+
 
 def create_vm(vm_name, template_choice, user_name):
     # Load in templates from SQL
@@ -364,7 +370,8 @@ def create_vm(vm_name, template_choice, user_name):
     print("VM Added to the MySQL database with port: " + str(port))
 
     # Create VM with Harvester API
-    postResponse = post_request(harvester_url, jsonData, harvester_token)
+    query_url = harvester_url + "/apis/kubevirt.io/v1/namespaces/default/virtualmachines"
+    postResponse = post_request(query_url, jsonData, harvester_token)
     print(postResponse.status_code)
     if postResponse.status_code == 409:
         print("VM already exists...")
@@ -376,6 +383,11 @@ def create_vm(vm_name, template_choice, user_name):
         pprint(postResponse.text.strip())
         sys.exit(1)
 
+def get_metrics():
+    query_url = harvester_url + "/v1/harvester/metrics.k8s.io.nodes"
+    getResponse = get_request(query_url, harvester_token)
+    print(getResponse.text)
+    sys.exit(1)
 
 if __name__ == "__main__":
     print("This script is a module for the Ironsight project. It is not meant to be run directly.")
