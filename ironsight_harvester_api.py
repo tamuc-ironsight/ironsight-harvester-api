@@ -384,6 +384,18 @@ def create_vm(vm_name, template_choice, user_name):
         pprint(postResponse.text.strip())
         sys.exit(1)
 
+def get_node_names():
+    query_url = harvester_url + "/v1/harvester/nodes"
+    getResponse = get_request(query_url, harvester_token)
+    response = {'hosts': []}
+    for node in getResponse.json()['data']:
+        hostname =  node['id']
+        ip = node['metadata']['annotations']['rke2.io/internal-ip']
+        response['hosts'].append({'hostname': hostname, 'ip': ip})
+    response = json.dumps(response)
+    print(response)
+    sys.exit(1)
+
 def get_metrics():
     query_url = harvester_url + "/v1/harvester/metrics.k8s.io.nodes"
     getResponse = get_request(query_url, harvester_token)
