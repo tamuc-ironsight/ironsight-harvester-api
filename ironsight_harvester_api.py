@@ -396,6 +396,28 @@ def get_cpu_usage(start_time, end_time, step):
     print(getResponse.text)
     sys.exit(1)
 
+def get_network_usage(start_time, end_time, step):
+    # Need to get 2 types of network usage:
+    # 1. Packets sent
+    # 2. Packets received
+
+    response = {}
+
+    # 1. Packets sent
+    query_url = harvester_url + f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=sum(rate(node_network_transmit_packets_total%7Bdevice!~%22lo%7Cveth.*%7Cdocker.*%7Cflannel.*%7Ccali.*%7Ccbr.*%22%7D%5B240s%5D))%20by%20(instance)%20OR%20sum(rate(windows_net_packets_sent_total%7Bnic!~%27.*isatap.*%7C.*VPN.*%7C.*Pseudo.*%7C.*tunneling.*%27%7D%5B240s%5D))%20by%20(instance)&start{start_time}&end={end_time}&step={step}"
+    getResponse = get_request(query_url, harvester_token)
+
+    # 2. Packets Received
+    query_url = harvester_url + f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=sum(rate(node_network_receive_packets_total%7Bdevice!~%22lo%7Cveth.*%7Cdocker.*%7Cflannel.*%7Ccali.*%7Ccbr.*%22%7D%5B240s%5D))%20by%20(instance)%20OR%20sum(rate(windows_net_packets_received_total_total%7Bnic!~%27.*isatap.*%7C.*VPN.*%7C.*Pseudo.*%7C.*tunneling.*%27%7D%5B240s%5D))%20by%20(instance)&start={start_time}&end={end_time}&step={step}"
+    getResponse = get_request(query_url, harvester_token)
+    
+    # Convert to JSON and add to response
+    response['packets_sent'] = json.loads(getResponse.text)
+    response['packets_received'] = json.loads(getResponse.text)
+
+    print(json.dumps(response))
+    sys.exit(1)
+
 if __name__ == "__main__":
     print("This script is a module for the Ironsight project. It is not meant to be run directly.")
     print("\nShowing configuration:")
