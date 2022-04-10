@@ -434,6 +434,12 @@ def get_network_usage(start_time, end_time, step):
     print(json.dumps(response))
     sys.exit(1)
 
+def get_memory_usage(start_time, end_time, step):
+    query_url = harvester_url + f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=1%20-%20sum(node_memory_MemAvailable_bytes%20OR%20windows_os_physical_memory_free_bytes)%20by%20(instance)%20%2F%20sum(node_memory_MemTotal_bytes%20OR%20windows_cs_physical_memory_bytes)%20by%20(instance)%20&start={start_time}&end={end_time}&step={step}"
+    getResponse = get_request(query_url, harvester_token)
+    print(getResponse.text)
+    sys.exit(1)
+
 if __name__ == "__main__":
     print("This script is a module for the Ironsight project. It is not meant to be run directly.")
     print("\nShowing configuration:")
