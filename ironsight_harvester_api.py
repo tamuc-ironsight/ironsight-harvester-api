@@ -440,6 +440,38 @@ def get_memory_usage(start_time, end_time, step):
     print(getResponse.text)
     sys.exit(1)
 
+def get_disk_usage(start_time, end_time, step):
+    # Disk read
+    query_url_read = harvester_url + f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=sum(rate(node_disk_read_bytes_total%5B240s%5D)%20OR%20rate(windows_logical_disk_read_bytes_total%5B240s%5D))%20by%20(instance)&start={start_time}&end={end_time}&step={step}"
+    getResponseRead = get_request(query_url_read, harvester_token)
+
+    # Disk write
+    query_url_write = harvester_url + f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=sum(rate(node_disk_written_bytes_total%5B240s%5D)%20OR%20rate(windows_logical_disk_write_bytes_total%5B240s%5D))%20by%20(instance)&start={start_time}&end={end_time}&step={step}"
+    getResponseWrite = get_request(query_url_write, harvester_token)
+
+    # Convert to JSON and add to response
+    response = json.loads(getResponseRead.text)
+    # Add (sent) to data.result.metric.instance
+    for i in range(len(response['data']['result'])):
+        # Remove the port number from the instance name
+        instance = response['data']['result'][i]['metric']['instance']
+        instance = instance.split(":")[0]
+        response['data']['result'][i]['metric']['instance'] = instance + " (read)"
+
+    # Do the same for the write data
+    response2 = json.loads(getResponseWrite.text)
+    for i in range(len(response2['data']['result'])):
+        instance = response2['data']['result'][i]['metric']['instance']
+        instance = instance.split(":")[0]
+        response2['data']['result'][i]['metric']['instance'] = instance + " (write)"
+    
+    # Add the received data to the response
+    response['data']['result'] = response['data']['result'] + response2['data']['result']
+
+    # Print response
+    print(json.dumps(response))
+    sys.exit(1)
+
 if __name__ == "__main__":
     print("This script is a module for the Ironsight project. It is not meant to be run directly.")
     print("\nShowing configuration:")
