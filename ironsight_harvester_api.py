@@ -404,17 +404,33 @@ def get_network_usage(start_time, end_time, step):
     response = {}
 
     # 1. Packets sent
-    query_url = harvester_url + f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=sum(rate(node_network_transmit_packets_total%7Bdevice!~%22lo%7Cveth.*%7Cdocker.*%7Cflannel.*%7Ccali.*%7Ccbr.*%22%7D%5B240s%5D))%20by%20(instance)%20OR%20sum(rate(windows_net_packets_sent_total%7Bnic!~%27.*isatap.*%7C.*VPN.*%7C.*Pseudo.*%7C.*tunneling.*%27%7D%5B240s%5D))%20by%20(instance)&start{start_time}&end={end_time}&step={step}"
-    getResponse = get_request(query_url, harvester_token)
+    query_url = harvester_url + f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=sum(rate(node_network_transmit_packets_total%7Bdevice!~%22lo%7Cveth.*%7Cdocker.*%7Cflannel.*%7Ccali.*%7Ccbr.*%22%7D%5B240s%5D))%20by%20(instance)%20OR%20sum(rate(windows_net_packets_sent_total%7Bnic!~%27.*isatap.*%7C.*VPN.*%7C.*Pseudo.*%7C.*tunneling.*%27%7D%5B240s%5D))%20by%20(instance)&start={start_time}&end={end_time}&step={step}"
+    getResponseSent = get_request(query_url, harvester_token)
 
     # 2. Packets Received
     query_url = harvester_url + f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=sum(rate(node_network_receive_packets_total%7Bdevice!~%22lo%7Cveth.*%7Cdocker.*%7Cflannel.*%7Ccali.*%7Ccbr.*%22%7D%5B240s%5D))%20by%20(instance)%20OR%20sum(rate(windows_net_packets_received_total_total%7Bnic!~%27.*isatap.*%7C.*VPN.*%7C.*Pseudo.*%7C.*tunneling.*%27%7D%5B240s%5D))%20by%20(instance)&start={start_time}&end={end_time}&step={step}"
-    getResponse = get_request(query_url, harvester_token)
+    getResponseReceived = get_request(query_url, harvester_token)
     
     # Convert to JSON and add to response
-    response['packets_sent'] = json.loads(getResponse.text)
-    response['packets_received'] = json.loads(getResponse.text)
+    response = json.loads(getResponseSent.text)
+    # Add (sent) to data.result.metric.instance
+    for i in range(len(response['data']['result'])):
+        # Remove the port number from the instance name
+        instance = response['data']['result'][i]['metric']['instance']
+        instance = instance.split(":")[0]
+        response['data']['result'][i]['metric']['instance'] = instance + " (sent)"
 
+    # Do the same for the received data
+    response2 = json.loads(getResponseReceived.text)
+    for i in range(len(response2['data']['result'])):
+        instance = response2['data']['result'][i]['metric']['instance']
+        instance = instance.split(":")[0]
+        response2['data']['result'][i]['metric']['instance'] = instance + " (received)"
+    
+    # Add the received data to the response
+    response['data']['result'] = response['data']['result'] + response2['data']['result']
+
+    # Print response
     print(json.dumps(response))
     sys.exit(1)
 
