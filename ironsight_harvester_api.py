@@ -237,6 +237,12 @@ def post_request(url, data, token):
                              'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
     return response
 
+def post_request_params(url, token):
+    urllib3.disable_warnings()
+    response = requests.post(url, verify=False, headers={
+                                'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
+    return response
+
 
 def get_request(url, token):
     urllib3.disable_warnings()
@@ -614,6 +620,31 @@ def get_disk_usage(start_time, end_time, step):
     # Print response
     return(json.dumps(response))
 
+def power_on_vm(vm_name):
+    query_url = harvester_url + \
+        f"/v1/harvester/kubevirt.io.virtualmachines/default/{vm_name}?action=start"
+    # POST request to stop the VM
+    postResponse = post_request_params(query_url, harvester_token)
+    jsonResponse = {}
+    # If response is blank, it was successful
+    if postResponse.text == "":
+        jsonResponse['status'] = "success"
+    else:
+        jsonResponse['status'] = postResponse.text.split(": ")[1]
+    return(json.dumps(jsonResponse))
+
+def power_off_vm(vm_name):
+    query_url = harvester_url + \
+        f"/v1/harvester/kubevirt.io.virtualmachines/default/{vm_name}?action=stop"
+    # POST request to stop the VM
+    postResponse = post_request_params(query_url, harvester_token)
+    jsonResponse = {}
+    # If response is blank, it was successful
+    if postResponse.text == "":
+        jsonResponse['status'] = "success"
+    else:
+        jsonResponse['status'] = postResponse.text.split(": ")[1]
+    return(json.dumps(jsonResponse))
 
 if __name__ == "__main__":
     print("This script is a module for the Ironsight project. It is not meant to be run directly.")
