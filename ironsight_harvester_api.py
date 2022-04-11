@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 
+from curses import meta
+from importlib.metadata import metadata
 import requests
 import urllib3
 from pprint import pprint
@@ -650,6 +652,19 @@ def power_off_vm(vm_name):
     else:
         jsonResponse['status'] = postResponse.text.split(": ")[1]
     return(json.dumps(jsonResponse))
+
+def power_toggle_vm(vm_name):
+    # If the VM is running, stop it
+    vms_list = json.loads(get_harvester_vms())
+    for vm in vms_list:
+        if vm['metadata']['name'] == vm_name:
+            if vm['status']['printableStatus'] == "Running":
+                power_off_vm(vm_name)
+                return(json.dumps({"status": "success"}))
+            else:
+                power_on_vm(vm_name)
+                return(json.dumps({"status": "success"}))
+    return(json.dumps({"status": "error"}))
 
 if __name__ == "__main__":
     print("This script is a module for the Ironsight project. It is not meant to be run directly.")
