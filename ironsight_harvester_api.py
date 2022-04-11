@@ -444,7 +444,11 @@ def get_vms_on():
     for vm in getResponse.json()['data']:
         if("Running" in vm['metadata']['fields'] or "Starting" in vm['metadata']['fields']):
             vms_on.append(vm['metadata']['fields'])
-    return vms_on
+
+    # Convert to JSON
+    json_response = {"vms_on": vms_on}
+    json_response = json.dumps(json_response)
+    return json_response
 
 def get_num_vms_on():
     return len(get_vms_on())
