@@ -431,6 +431,23 @@ def get_node_names():
     response = json.dumps(response)
     return response
 
+def get_num_vms():
+    query_url = harvester_url + "/v1/harvester/kubevirt.io.virtualmachines/default"
+    getResponse = get_request(query_url, harvester_token)
+    return len(getResponse.json()['data'])
+
+def get_vms_on():
+    # Statuses: Stopped, Starting, Running, Terminating
+    query_url = harvester_url + "/v1/harvester/kubevirt.io.virtualmachines/default"
+    getResponse = get_request(query_url, harvester_token)
+    vms_on = []
+    for vm in getResponse.json()['data']:
+        if("Running" in vm['metadata']['fields'] or "Starting" in vm['metadata']['fields']):
+            vms_on.append(vm['metadata']['fields'])
+    return vms_on
+
+def get_num_vms_on():
+    return len(get_vms_on())
 
 def get_metrics():
     query_url = harvester_url + "/v1/harvester/metrics.k8s.io.nodes"
