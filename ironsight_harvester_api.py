@@ -202,12 +202,18 @@ def get_labs():
                 lab['users'] += vm['users']
                 # Remove duplicates
                 lab['users'] = list(set(lab['users']))
-
     return json.dumps(labsJSON)
 
+def get_classes():
+    tags = get_tags()
+    tags = json.loads(tags)
+    classes = []
+    for tag in tags:
+        if tag['type'] == 'class':
+            classes.append(tag)
+    return json.dumps(classes)
+
 # Print templates nicely in console
-
-
 def list_templates():
     templatesJSON = get_templates()
     ironsight_sql.pretty_response(templatesJSON)
@@ -431,10 +437,12 @@ def get_node_names():
     response = json.dumps(response)
     return response
 
+
 def get_num_vms():
     query_url = harvester_url + "/v1/harvester/kubevirt.io.virtualmachines/default"
     getResponse = get_request(query_url, harvester_token)
     return len(getResponse.json()['data'])
+
 
 def get_vms_on():
     # Statuses: Stopped, Starting, Running, Terminating
@@ -450,10 +458,12 @@ def get_vms_on():
     json_response = json.dumps(json_response)
     return json_response
 
+
 def get_num_vms_on():
     vms_on = get_vms_on()
     vms_on = json.loads(vms_on)
     return len(vms_on['vms_on'])
+
 
 def get_metrics():
     query_url = harvester_url + "/v1/harvester/metrics.k8s.io.nodes"
