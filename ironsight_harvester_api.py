@@ -217,7 +217,7 @@ def get_lab_overview(lab_num):
     # Get the lab info by using the lab_num
     labs = get_labs()
     labs = json.loads(labs)
-    lab_response = None
+    lab_response = {}
     for lab in labs:
         if lab['lab_num'] == int(lab_num):
             lab_response = lab
