@@ -451,7 +451,9 @@ def get_vms_on():
     return json_response
 
 def get_num_vms_on():
-    return len(get_vms_on())
+    vms_on = get_vms_on()
+    vms_on = json.loads(vms_on)
+    return len(vms_on['vms_on'])
 
 def get_metrics():
     query_url = harvester_url + "/v1/harvester/metrics.k8s.io.nodes"
