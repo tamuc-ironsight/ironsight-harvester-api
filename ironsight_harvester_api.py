@@ -459,6 +459,11 @@ def get_num_vms():
     getResponse = get_request(query_url, harvester_token)
     return len(getResponse.json()['data'])
 
+def get_harvester_vms():
+    query_url = harvester_url + "/v1/harvester/kubevirt.io.virtualmachines/default"
+    getResponse = get_request(query_url, harvester_token)
+    return getResponse.json()['data']
+
 
 def get_vms_on():
     # Statuses: Stopped, Starting, Running, Terminating
