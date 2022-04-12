@@ -260,9 +260,10 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
     # Account for template override
     if template_override is not None:
         # Unescape the template override
-        print("Using template override: " + template_override)
         # template_override = template_override.replace("\\", "")
+        print("Using template override: " + template_override)
         template_override = json.loads(template_override)
+        pprint("Parsed template override: " + template_override)
 
     # Make sure template exists in SQL, if so, get image name and image size (in gigabytes)
     # Otherwise, print error and exit
