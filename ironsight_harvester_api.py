@@ -91,9 +91,16 @@ def post_request(url, data, token):
     return response
 
 
-def create_vm(vm_name, template_choice, user_name):
+def create_vm(vm_name, template_choice, user_name, template_override=None):
     # Load in templates from SQL
     templatesJSON = ironsight_sql.query("SELECT * FROM vm_templates", sql_server, sql_user, sql_pass, sql_db)
+    
+    # Account for template override
+    if template_override is not None:
+        # Unescape the template override
+        print("Using template override: " + template_override)
+        template_override = template_override.replace("\\", "")
+        template_override = json.loads(template_override)
 
     # Make sure template exists in SQL, if so, get image name and image size (in gigabytes)
     # Otherwise, print error and exit
@@ -125,14 +132,53 @@ def create_vm(vm_name, template_choice, user_name):
     string.ascii_lowercase) for i in range(5))
     claim_name = vm_name + "-claim" + random_letters
 
+    elastic_enrolled = bool(templateData['elastic_enrolled'])
+    # If template override is not None, check if elastic_enrolled is set in template override
+    if template_override is not None:
+        if 'elastic_enrolled' in template_override:
+            elastic_enrolled = bool(template_override['elastic_enrolled'])
+            del template_override['elastic_enrolled']
+
     # Determine if VM should be enrolled in Elasticsearch or not
-    if templateData['elastic_enrolled'] == 1:
+    if elastic_enrolled:
         print("\nElasticsearch is enrolled in this template...")
         cloud_init_data = "#cloud-config\npackage_update: true\npackages:\n  - wget\nhostname: "+ vm_name + "\nusers:\n  - name: " + user_name + "\n    gecos: " + user_name + "\n    expiredate: '2032-09-01'\n    lock_passwd: false\n    passwd: $6$rounds=4096$Vd8W45YhfEELz1sq$HVp7eLIeJM.XOmN8o.RAwrg1UsqKpAXZBClx6uSX46j5Jwe4HN7cPdPYaKDLUVKYcAvjGTyRP3w26OrIo/.HD1\nruncmd:\n  - [ mkdir, /home/elastic ]\n  - [ wget, \"https://artifacts.elastic.co/downloads/beats/elastic-agent/elastic-agent-" + elastic_version + "-linux-x86_64.tar.gz\", -O, /home/elastic/agent.tar.gz ]\n  - [ tar, -xvf, /home/elastic/agent.tar.gz, -C, /home/elastic/ ]\n  - [ ./home/elastic/elastic-agent-" + elastic_version + "-linux-x86_64/elastic-agent, install, \"-f\",\"--url=" + elastic_url + "\", \"--enrollment-token=" + elastic_token + "\", \"--insecure\" ]\n  - [\"touch\", \"/etc/cloud/cloud-init.disabled\"]"
     else:
         print("\nSkipping Elasticsearch enrollment...")
         # cloud_init_data = "#cloud-config\npackage_update: false\nhostname: "+ vmName + "\nusers:\n  - name: " + userName + "\n    gecos: Student User\n    expiredate: '2032-09-01'\n    lock_passwd: false\n    passwd: $6$rounds=4096$Vd8W45YhfEELz1sq$HVp7eLIeJM.XOmN8o.RAwrg1UsqKpAXZBClx6uSX46j5Jwe4HN7cPdPYaKDLUVKYcAvjGTyRP3w26OrIo/.HD1"
         cloud_init_data = "#cloud-config"
+
+    # Data coming from frontend with customization looks like this:
+    # {
+    # "cpu_cores": "2",
+    # "memory": "4",
+    # "cloud_init_data": {
+    #     "packages": [
+    #         "neofetch",
+    #         "python3-pip"
+    #     ]
+    # },
+    # "running": "true"
+    # }
+
+    default_specs = {
+        "cpu_cores": "2",
+        "memory": "4",
+        "cloud_init_data": cloud_init_data,
+        "running": True
+    }
+
+    # Get user's specs from template['template_data]
+    # If user has not specified any specs, use default specs
+    if template_override is None:
+        user_specs = json.loads(templateData['template_data'])
+    else:
+        user_specs = template_override
+    if user_specs == {'': ''}:
+        specs = default_specs
+    else:
+        # Merge user's specs with default specs and overwrite default specs with user's specs
+        specs = {**default_specs, **user_specs}
 
     jsonData = {
         "apiVersion": "kubevirt.io/v1",
@@ -151,7 +197,7 @@ def create_vm(vm_name, template_choice, user_name):
         },
         "__clone": True,
         "spec": {
-            "running": True,
+            "running": bool(specs['running']),
             "template": {
                 "metadata": {
                     "annotations": {
@@ -167,7 +213,7 @@ def create_vm(vm_name, template_choice, user_name):
                             "type": "q35"
                         },
                         "cpu": {
-                            "cores": 4,
+                            "cores": int(specs['cpu_cores']),
                             "sockets": 1,
                             "threads": 1
                         },
@@ -198,8 +244,8 @@ def create_vm(vm_name, template_choice, user_name):
                         },
                         "resources": {
                             "limits": {
-                                "memory": "8Gi",
-                                "cpu": 4
+                                "memory": str(specs['memory']) + str("Gi"),
+                                "cpu": int(specs['cpu_cores'])
                             }
                         }
                     },
@@ -253,23 +299,36 @@ def create_vm(vm_name, template_choice, user_name):
         sys.exit(1)
     print("Adding VM to the MySQL database...")
     # INSERT INTO `ironsight`.`virtual_machines` (`vm_name`, `harvester_vm_name`, `port_number`, `template_name`, `tags`) VALUES ('android-tharrison', 'android-tharrison-harvester-name', '5904', 'android', '{\"tags\": [\"android\"]}');
+    
+    tags_string = "{\"tags\": ["
+    tags = []
+    if template_override is not None:
+        if 'tags' in template_override:
+            tags = template_override['tags']
+
+    # Add tags to tags_string
+    tags.append(user_name)
+    for tag in tags:
+        tags_string += "\"" + tag + "\", "
+    tags_string = tags_string[:-2] + "]}"
+
     query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name, tags) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "', '{\"tags\": [\"" + user_name + "\"]}\')")
-    # print(query)
+    print(query)
     ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db) 
     print("VM Added to the MySQL database with port: " + str(port))
 
     # Create VM with Harvester API
-    postResponse = post_request(harvester_url, jsonData, harvester_token)
-    print(postResponse.status_code)
-    if postResponse.status_code == 409:
-        print("VM already exists...")
-        sys.exit(1)
-    if postResponse.status_code == 201:
-        print("VM Created Successfully")
-    else:
-        print("Error creating VM")
-        pprint(postResponse.text.strip())
-        sys.exit(1)
+    # postResponse = post_request(harvester_url, jsonData, harvester_token)
+    # print(postResponse.status_code)
+    # if postResponse.status_code == 409:
+    #     print("VM already exists...")
+    #     sys.exit(1)
+    # if postResponse.status_code == 201:
+    #     print("VM Created Successfully")
+    # else:
+    #     print("Error creating VM")
+    #     pprint(postResponse.text.strip())
+    #     sys.exit(1)
 
 
 if __name__ == "__main__":

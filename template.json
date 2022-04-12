@@ -1,0 +1,11 @@
+{
+    "cpu_cores": "2",
+    "memory": "4",
+    "cloud_init_data": {
+        "packages": [
+            "neofetch",
+            "python3-pip"
+        ]
+    },
+    "running": "true"
+}
