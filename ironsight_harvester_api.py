@@ -468,20 +468,36 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
         sys.exit(1)
     print("Adding VM to the MySQL database...")
     # INSERT INTO `ironsight`.`virtual_machines` (`vm_name`, `harvester_vm_name`, `port_number`, `template_name`, `tags`) VALUES ('android-tharrison', 'android-tharrison-harvester-name', '5904', 'android', '{\"tags\": [\"android\"]}');
-    
-    tags_string = "{\"tags\": ["
-    tags = []
-    if template_override is not None:
-        if 'tags' in template_override:
-            tags = template_override['tags']
 
     # Add tags to tags_string
-    tags.append(user_name)
-    for tag in tags:
-        tags_string += "\"" + tag + "\", "
-    tags_string = tags_string[:-2] + "]}"
+    # tags.append(user_name)
+    # for tag in tags:
+    #     tags_string += "\"" + tag + "\", "
+    # tags_string = tags_string[:-2] + "]}"
 
-    query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name, tags) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "', '{\"tags\": [\"" + user_name + "\"]}\')")
+    # A tag looks like this:
+    # {"tag": "tag_name", "type": "tag_type", "tag_id": "tag_id"}
+    tags = {"tags": []}
+    if template_override is not None:
+        if 'tags' in template_override:
+            for tag in template_override['tags']:
+                tags['tags'].append(tag)
+    
+    # Convert the vm_user into a tag and add it to the tags list
+    # Check if the user is already in the tags list in the SQL database
+    tag_query = "SELECT * FROM tags WHERE tag = '" + user_name + "'"
+    result = ironsight_sql.query(tag_query, sql_server, sql_user, sql_pass, sql_db)
+    if len(result) > 0:
+        tag_id = result[0]['tag_id']
+    else:
+        tag_id = -1
+    tags['tags'].append({"tag": user_name, "type": "user", "tag_id": tag_id})
+
+    # Stringify and escape the tags list
+    tags_string = json.dumps(tags)
+
+    # query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name, tags) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "', '{\"tags\": [\"" + user_name + "\"]}\')")
+    query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name, tags) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "', '" + tags_string + "')")
     print(query)
     ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db) 
     print("VM Added to the MySQL database with port: " + str(port))
