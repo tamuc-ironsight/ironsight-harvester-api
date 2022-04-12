@@ -261,7 +261,7 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
     if template_override is not None:
         # Unescape the template override
         print("Using template override: " + template_override)
-        template_override = template_override.replace("\\", "")
+        # template_override = template_override.replace("\\", "")
         template_override = json.loads(template_override)
 
     # Make sure template exists in SQL, if so, get image name and image size (in gigabytes)
@@ -452,6 +452,8 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
     print("Elastic Domin: " + elastic_url)
     print("Creating VM...")
 
+    print(json.dumps(jsonData))
+
     # Add VM to the MySQL database
     port = -1
     # Get a free port between 5900 and 65535
@@ -468,12 +470,6 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
         sys.exit(1)
     print("Adding VM to the MySQL database...")
     # INSERT INTO `ironsight`.`virtual_machines` (`vm_name`, `harvester_vm_name`, `port_number`, `template_name`, `tags`) VALUES ('android-tharrison', 'android-tharrison-harvester-name', '5904', 'android', '{\"tags\": [\"android\"]}');
-
-    # Add tags to tags_string
-    # tags.append(user_name)
-    # for tag in tags:
-    #     tags_string += "\"" + tag + "\", "
-    # tags_string = tags_string[:-2] + "]}"
 
     # A tag looks like this:
     # {"tag": "tag_name", "type": "tag_type", "tag_id": "tag_id"}
@@ -503,7 +499,8 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
     print("VM Added to the MySQL database with port: " + str(port))
 
     # Create VM with Harvester API
-    postResponse = post_request(harvester_url, jsonData, harvester_token)
+    create_vm_url = harvester_url + "/apis/kubevirt.io/v1/namespaces/default/virtualmachines/"
+    postResponse = post_request(create_vm_url, jsonData, harvester_token)
     print(postResponse.status_code)
     if postResponse.status_code == 409:
         print("VM already exists...")
