@@ -480,6 +480,15 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
         if 'tags' in template_override:
             for tag in template_override['tags']:
                 tags['tags'].append(tag)
+
+    # Check tabs for any tags with type 'lab' and add them to the labs list
+    labs = []
+    for tag in tags['tags']:
+        if tag['type'] == 'lab':
+            labs.append(tag['tag'])
+            print("Adding VM to lab: " + tag['tag'])
+    if len(labs) == 0:
+        print("No labs found")
     
     # Convert the vm_user into a tag and add it to the tags list
     # Check if the user is already in the tags list in the SQL database
@@ -498,6 +507,22 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
     query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name, tags) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "', '" + tags_string + "')")
     print(query)
     ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db) 
+
+    # The SQL database also has many-to-many relationships between users and virtual machines
+    # The keys are vm_name and user_name. The table is called virtual_machine_has_users
+    # The query is:
+    # INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('android-tharrison', 'tyler_harrison');
+    query = str("INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('" + vm_name + "', '" + user_name + "')")
+    ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    # There is another many-to-many relationship between virtual machines and labs
+    # The keys are vm_name and lab_num. The table is called virtual_machine_has_labs
+    # The query is:
+    # INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('android-tharrison', '1');
+    for lab in labs:
+        query = str("INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('" + vm_name + "', '" + lab + "')")
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
     print("VM Added to the MySQL database with port: " + str(port))
 
     # Create VM with Harvester API
@@ -513,7 +538,6 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
         print("Error creating VM")
         pprint(postResponse.text.strip())
         sys.exit(1)
-
 
 def get_node_names():
     query_url = harvester_url + "/v1/harvester/nodes"
