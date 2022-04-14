@@ -206,13 +206,22 @@ def get_labs():
                 lab['users'] = list(set(lab['users']))
     return json.dumps(labsJSON)
 
-def get_classes():
+def get_courses():
     tags = get_tags()
     tags = json.loads(tags)
     classes = []
+    images = []
     for tag in tags:
         if tag['type'] == 'class':
             classes.append(tag)
+        if tag['type'] == 'image_link':
+            images.append(tag)
+    # Each image has a matching sub_tag with a class sub_tag
+    for image in images:
+        for class_tag in classes:
+            if image['sub_tag'] == class_tag['sub_tag']:
+                class_tag['image_link'] = image['tag']
+                
     return json.dumps(classes)
 
 def get_lab_overview(lab_num):
