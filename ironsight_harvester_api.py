@@ -685,7 +685,6 @@ def get_memory_usage(start_time, end_time, step):
         response['data']['result'][i]['metric']['instance'] = instance
     return(json.dumps(response))
 
-
 def get_disk_usage(start_time, end_time, step):
     nodemap = json.loads(get_node_names())
     # Disk read
@@ -729,6 +728,48 @@ def get_disk_usage(start_time, end_time, step):
         response2['data']['result']
 
     # Print response
+    return(json.dumps(response))
+
+def get_vm_cpu_usage(start_time, end_time, step):
+    query_url = harvester_url + \
+        f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(avg(rate(kubevirt_vmi_vcpu_seconds%5B5m%5D))%20by%20(domain%2C%20name)))%20&start={start_time}&end={end_time}&step={step}"
+    getResponse = get_request(query_url, harvester_token)
+    response = json.loads(getResponse.text)
+    return(json.dumps(response))
+
+def get_vm_memory_usage(start_time, end_time, step):
+    query_url = harvester_url + \
+        f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20((kubevirt_vmi_memory_available_bytes%20-%20kubevirt_vmi_memory_unused_bytes)%20%2F%20kubevirt_vmi_memory_available_bytes))&start={start_time}&end={end_time}&step={step}"
+    getResponse = get_request(query_url, harvester_token)
+    response = json.loads(getResponse.text)
+    return(json.dumps(response))
+
+def get_vm_storage_read_usage(start_time, end_time, step):
+    query_url = harvester_url + \
+        f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(irate(kubevirt_vmi_storage_read_traffic_bytes_total%5B5m%5D)))%20&start={start_time}&end={end_time}&step={step}"
+    getResponse = get_request(query_url, harvester_token)
+    response = json.loads(getResponse.text)
+    return(json.dumps(response))
+
+def get_vm_storage_write_usage(start_time, end_time, step):
+    query_url = harvester_url + \
+        f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(irate(kubevirt_vmi_storage_write_traffic_bytes_total%5B5m%5D)))%20&start={start_time}&end={end_time}&step={step}"
+    getResponse = get_request(query_url, harvester_token)
+    response = json.loads(getResponse.text)
+    return(json.dumps(response))
+
+def get_vm_network_read_usage(start_time, end_time, step):
+    query_url = harvester_url + \
+        f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(irate(kubevirt_vmi_network_receive_bytes_total%5B5m%5D)*8))&start={start_time}&end={end_time}&step={step}"
+    getResponse = get_request(query_url, harvester_token)
+    response = json.loads(getResponse.text)
+    return(json.dumps(response))
+
+def get_vm_network_write_usage(start_time, end_time, step):
+    query_url = harvester_url + \
+        f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(irate(kubevirt_vmi_network_transmit_bytes_total%5B5m%5D)*8))&start={start_time}&end={end_time}&step={step}"
+    getResponse = get_request(query_url, harvester_token)
+    response = json.loads(getResponse.text)
     return(json.dumps(response))
 
 def power_on_vm(vm_name):
