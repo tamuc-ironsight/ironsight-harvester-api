@@ -772,6 +772,20 @@ def get_vm_network_write_usage(start_time, end_time, step):
     response = json.loads(getResponse.text)
     return(json.dumps(response))
 
+def get_vm_network_packets_received(start_time, end_time, step):
+    query_url = harvester_url + \
+        f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(delta(kubevirt_vmi_network_receive_packets_total%5B5m%5D)))&start={start_time}&end={end_time}&step={step}"
+    getResponse = get_request(query_url, harvester_token)
+    response = json.loads(getResponse.text)
+    return(json.dumps(response))
+
+def get_vm_network_packets_sent(start_time, end_time, step):
+    query_url = harvester_url + \
+        f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(delta(kubevirt_vmi_network_transmit_packets_total%5B5m%5D)))&start={start_time}&end={end_time}&step={step}"
+    getResponse = get_request(query_url, harvester_token)
+    response = json.loads(getResponse.text)
+    return(json.dumps(response))
+
 def power_on_vm(vm_name):
     query_url = harvester_url + \
         f"/v1/harvester/kubevirt.io.virtualmachines/default/{vm_name}?action=start"
