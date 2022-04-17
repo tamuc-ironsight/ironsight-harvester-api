@@ -307,11 +307,15 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
     claim_name = vm_name + "-claim" + random_letters
 
     elastic_enrolled = bool(templateData['elastic_enrolled'])
+    redeploy = False
     # If template override is not None, check if elastic_enrolled is set in template override
     if template_override is not None:
         if 'elastic_enrolled' in template_override:
             elastic_enrolled = bool(template_override['elastic_enrolled'])
             del template_override['elastic_enrolled']
+        if 'redeploy' in template_override:
+            redeploy = bool(template_override['redeploy'])
+            del template_override['redeploy']
 
     # Determine if VM should be enrolled in Elasticsearch or not
     if elastic_enrolled:
@@ -512,25 +516,26 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
     # Stringify and escape the tags list
     tags_string = json.dumps(tags)
 
-    # query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name, tags) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "', '{\"tags\": [\"" + user_name + "\"]}\')")
-    query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name, tags) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "', '" + tags_string + "')")
-    print(query)
-    ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db) 
+    if not redeploy:
+        # query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name, tags) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "', '{\"tags\": [\"" + user_name + "\"]}\')")
+        query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name, tags) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "', '" + tags_string + "')")
+        print(query)
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db) 
 
-    # The SQL database also has many-to-many relationships between users and virtual machines
-    # The keys are vm_name and user_name. The table is called virtual_machine_has_users
-    # The query is:
-    # INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('android-tharrison', 'tyler_harrison');
-    query = str("INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('" + vm_name + "', '" + user_name + "')")
-    ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
-
-    # There is another many-to-many relationship between virtual machines and labs
-    # The keys are vm_name and lab_num. The table is called virtual_machine_has_labs
-    # The query is:
-    # INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('android-tharrison', '1');
-    for lab in labs:
-        query = str("INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('" + vm_name + "', '" + lab + "')")
+        # The SQL database also has many-to-many relationships between users and virtual machines
+        # The keys are vm_name and user_name. The table is called virtual_machine_has_users
+        # The query is:
+        # INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('android-tharrison', 'tyler_harrison');
+        query = str("INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('" + vm_name + "', '" + user_name + "')")
         ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+        # There is another many-to-many relationship between virtual machines and labs
+        # The keys are vm_name and lab_num. The table is called virtual_machine_has_labs
+        # The query is:
+        # INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('android-tharrison', '1');
+        for lab in labs:
+            query = str("INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('" + vm_name + "', '" + lab + "')")
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
 
     print("VM Added to the MySQL database with port: " + str(port))
 
