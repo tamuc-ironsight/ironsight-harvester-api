@@ -285,6 +285,16 @@ def get_labs():
                 # Remove duplicates
                 lab['users'] = list(set(lab['users']))
 
+    # Get the course for each lab
+    for lab in labsJSON:
+        lab['course_id'] = ""
+    courses_has_labs = ironsight_sql.query(
+        "SELECT * FROM courses_has_labs", sql_server, sql_user, sql_pass, sql_db)
+    for course_lab in courses_has_labs:
+        for lab in labsJSON:
+            if course_lab['lab_num'] == lab['lab_num']:
+                lab['course_id'] = (course_lab['course_id'])
+
     # Add the tags for each lab
     for lab in labsJSON:
         lab['tags'] = []
