@@ -83,6 +83,12 @@ def pretty_response(queryResponse):
         for row in values:
             row[templateIndex] = "(Too long)"
 
+    if "labs" in keys:
+        # Find the index of the template_data column
+        labIndex = keys.index("labs")
+        for row in values:
+            row[labIndex] = "(Too long)"
+
     # Print the response in a table format using dashes
     print("-" * (len(keys) * 20 + len(keys) - 1))
     print("|", end="")

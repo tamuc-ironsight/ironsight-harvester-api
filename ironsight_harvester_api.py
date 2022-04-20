@@ -10,7 +10,6 @@ import json
 import random
 import string
 import sys
-import time
 
 # Determine if config.json is here or in parent directory
 
@@ -31,7 +30,6 @@ def get_config():
 
 # Load in configuration file
 config_path = get_config()
-
 with open(config_path) as config_file:
     config = json.load(config_file)
     sql_server = config['sql_server']
@@ -50,46 +48,97 @@ with open(config_path) as config_file:
 def get_tags():
     tagsJSON = ironsight_sql.query(
         "SELECT * FROM tags", sql_server, sql_user, sql_pass, sql_db)
-    # Sort by tag_id
-    tagsJSON.sort(key=lambda x: x['tag_id'])
+    # Sort by tag
+    tagsJSON.sort(key=lambda x: x['tag'])
     return json.dumps(tagsJSON)
 
-# Example:
-    # {
-    #     "vm_name": "android-tharrison",
-    #     "harvester_vm_name": "android-tharrison-harvester-name",
-    #     "port_number": 5904,
-    #     "elastic_agent_id": null,
-    #     "template_name": "android",
-    #     "tags": [
-    #         {
-    #             "tag": "android",
-    #             "type": "os",
-    #             "tag_id": 10
-    #         },
-    #         {
-    #             "tag": "tyler_harrison",
-    #             "type": "user",
-    #             "tag_id": 9
-    #         }
-    #     ],
-    #     "users": []
-    # }
+
+def get_courses():
+    courses = ironsight_sql.query(
+        "SELECT * FROM courses", sql_server, sql_user, sql_pass, sql_db)
+
+    # Add labs to the response
+    course_has_labs = ironsight_sql.query(
+        "SELECT * FROM courses_has_labs", sql_server, sql_user, sql_pass, sql_db)
+    for course in courses:
+        course['labs'] = []
+    for lab in course_has_labs:
+        for course in courses:
+            if lab['course_id'] == course['course_id']:
+                course['labs'].append(lab['lab_num'])
+
+    # Add users to the response
+    course_has_users = ironsight_sql.query(
+        "SELECT * FROM courses_has_users", sql_server, sql_user, sql_pass, sql_db)
+    for course in courses:
+        course['users'] = []
+    for user in course_has_users:
+        for course in courses:
+            if user['course_id'] == course['course_id']:
+                course['users'].append(user['user_name'])
+
+    # Add tags to the response
+    courses_has_tags = ironsight_sql.query(
+        "SELECT * FROM courses_has_tags", sql_server, sql_user, sql_pass, sql_db)
+    for course in courses:
+        course['tags'] = []
+    for tag in courses_has_tags:
+        for course in courses:
+            if tag['course_id'] == course['course_id']:
+                course['tags'].append(tag['tag'])
+
+    # Add the vms to the response
+    courses_has_vms = ironsight_sql.query(
+        "SELECT * FROM courses_has_virtual_machines", sql_server, sql_user, sql_pass, sql_db)
+    for course in courses:
+        course['virtual_machines'] = []
+    for vm in courses_has_vms:
+        for course in courses:
+            if vm['course_id'] == course['course_id']:
+                course['virtual_machines'].append(vm['vm_name'])
+
+    # Sort by course
+    courses.sort(key=lambda x: x['course_id'])
+    return json.dumps(courses)
+
+    # Sort by course_id
+    courses.sort(key=lambda x: x['course_id'])
+    return json.dumps(courses)
+
+
+def get_permissions():
+    permissionsJSON = ironsight_sql.query(
+        "SELECT * FROM permissions", sql_server, sql_user, sql_pass, sql_db)
+    return json.dumps(permissionsJSON)
+
+
+def get_roles():
+    rolesJSON = ironsight_sql.query(
+        "SELECT * FROM roles", sql_server, sql_user, sql_pass, sql_db)
+
+    # Add permissions to the response
+    permissions = ironsight_sql.query(
+        "SELECT * FROM roles_has_permissions", sql_server, sql_user, sql_pass, sql_db)
+
+    # Add permissions to the response
+    for role in rolesJSON:
+        role['permissions'] = []
+        for permission in permissions:
+            if role['role'] == permission['role']:
+                role['permissions'].append(permission['permission_name'])
+
+    return json.dumps(rolesJSON)
 
 
 def get_vms():
     vmsJSON = ironsight_sql.query(
         "SELECT * FROM virtual_machines", sql_server, sql_user, sql_pass, sql_db)
-    # Pull out the tags
-    for template in vmsJSON:
-        template['tags'] = json.loads(template['tags'])['tags']
 
     # Populate the users field
     for vm in vmsJSON:
         vm['users'] = []
 
     # Handle the many-to-many relationship between virtual machines and users ("virtual_machine_has_users")
-    # Stored like this: [{'vm_name': 'android-tharrison', 'user_name': 'tyler_harrison'}]
     virtual_machine_has_users = ironsight_sql.query(
         "SELECT * FROM virtual_machine_has_users", sql_server, sql_user, sql_pass, sql_db)
     for vm_user in virtual_machine_has_users:
@@ -102,7 +151,6 @@ def get_vms():
         vm['labs'] = []
 
     # Handle the many-to-many relationship between virtual machines and labs ("virtual_machine_has_labs")
-    # Stored like this: [{'vm_name': 'android-tharrison', 'lab_num': '1'}]
     virtual_machine_has_labs = ironsight_sql.query(
         "SELECT * FROM virtual_machine_has_labs", sql_server, sql_user, sql_pass, sql_db)
     for vm_lab in virtual_machine_has_labs:
@@ -110,23 +158,30 @@ def get_vms():
             if vm_lab['vm_name'] == vm['vm_name']:
                 vm['labs'].append(vm_lab['lab_num'])
 
+    # Handle the many-to-many relationship between virtual machines and tags ("virtual_machine_has_tags")
+    virtual_machine_has_tags = ironsight_sql.query(
+        "SELECT * FROM virtual_machines_has_tags", sql_server, sql_user, sql_pass, sql_db)
+
+    # Add tags to vms
+    for vm in vmsJSON:
+        vm['tags'] = []
+    for vm_tag in virtual_machine_has_tags:
+        for vm in vmsJSON:
+            if vm_tag['vm_name'] == vm['vm_name']:
+                vm['tags'].append(vm_tag['tag'])
+
     return json.dumps(vmsJSON)
 
 
 def get_templates():
     templatesJSON = ironsight_sql.query(
         "SELECT * FROM vm_templates", sql_server, sql_user, sql_pass, sql_db)
-    # Pull out the tags
-    for template in templatesJSON:
-        template['tags'] = json.loads(template['tags'])['tags']
-        template['template_data'] = json.loads(template['template_data'])
 
     # Populate labs with empty list
     for template in templatesJSON:
         template['labs'] = []
 
     # Handle the many-to-many relationship between templates and labs ("labs_has_vm_templates")
-    # Stored like this: [{'id': '1', 'lab_num': '1', 'template_name': 'android'}]
     labs_has_vm_templates = ironsight_sql.query(
         "SELECT * FROM labs_has_vm_templates", sql_server, sql_user, sql_pass, sql_db)
     for lab_template in labs_has_vm_templates:
@@ -134,22 +189,30 @@ def get_templates():
             if lab_template['template_name'] == template['template_name']:
                 template['labs'].append(lab_template['lab_num'])
 
+    # Handle the many-to-many relationship between templates and tags ("vm_templates_has_tags")
+    vm_templates_has_tags = ironsight_sql.query(
+        "SELECT * FROM vm_templates_has_tags", sql_server, sql_user, sql_pass, sql_db)
+
+    # Add tags to templates
+    for template in templatesJSON:
+        template['tags'] = []
+    for template_tag in vm_templates_has_tags:
+        for template in templatesJSON:
+            if template_tag['template_name'] == template['template_name']:
+                template['tags'].append(template_tag['tag'])
+
     return json.dumps(templatesJSON)
 
 
 def get_users():
     usersJSON = ironsight_sql.query(
         "SELECT * FROM users", sql_server, sql_user, sql_pass, sql_db)
-    # Pull out the tags
-    for template in usersJSON:
-        template['tags'] = json.loads(template['tags'])['tags']
 
-    # Populate labs with empty list
+    # Populate virtual_machines with empty list
     for user in usersJSON:
         user['virtual_machines'] = []
 
     # Handle the many-to-many relationship between virtual machines and users ("virtual_machine_has_users")
-    # Stored like this: [{'vm_name': 'android-tharrison', 'user_name': 'tyler_harrison'}]
     virtual_machine_has_users = ironsight_sql.query(
         "SELECT * FROM virtual_machine_has_users", sql_server, sql_user, sql_pass, sql_db)
     for vm_user in virtual_machine_has_users:
@@ -157,15 +220,34 @@ def get_users():
             if vm_user['user_name'] == user['user_name']:
                 user['virtual_machines'].append(vm_user['vm_name'])
 
+    # Get the roles for each user
+    for user in usersJSON:
+        user['roles'] = []
+    user_has_roles = ironsight_sql.query(
+        "SELECT * FROM users_has_roles", sql_server, sql_user, sql_pass, sql_db)
+    for user_role in user_has_roles:
+        for user in usersJSON:
+            if user_role['user_name'] == user['user_name']:
+                user['roles'].append(user_role['role'])
+
+    # Get the tags for each user
+    for user in usersJSON:
+        user['tags'] = []
+    user_has_tags = ironsight_sql.query(
+        "SELECT * FROM users_has_tags", sql_server, sql_user, sql_pass, sql_db)
+    for user_tag in user_has_tags:
+        for user in usersJSON:
+            if user_tag['user_name'] == user['user_name']:
+                user['tags'].append(user_tag['tag'])
+
+    return json.dumps(usersJSON)
+
     return json.dumps(usersJSON)
 
 
 def get_labs():
     labsJSON = ironsight_sql.query(
         "SELECT * FROM labs", sql_server, sql_user, sql_pass, sql_db)
-    # Pull out the tags
-    for template in labsJSON:
-        template['tags'] = json.loads(template['tags'])['tags']
     # Fix datetime.datetime object to make it JSON serializable
     for lab in labsJSON:
         lab['date_start'] = str(lab['date_start'])
@@ -177,7 +259,6 @@ def get_labs():
         lab['templates'] = []
 
     # Handle the many-to-many relationship between virtual machines and labs ("virtual_machine_has_labs")
-    # Stored like this: [{'vm_name': 'android-tharrison', 'lab_num': '1'}]
     virtual_machine_has_labs = ironsight_sql.query(
         "SELECT * FROM virtual_machine_has_labs", sql_server, sql_user, sql_pass, sql_db)
     for vm_lab in virtual_machine_has_labs:
@@ -186,7 +267,6 @@ def get_labs():
                 lab['virtual_machines'].append(vm_lab['vm_name'])
 
     # Handle the many-to-many relationship between virtual machines and templates ("labs_has_vm_templates")
-    # Stored like this: [{'id': '1', 'lab_num': '1', 'template_name': 'android'}]
     labs_has_vm_templates = ironsight_sql.query(
         "SELECT * FROM labs_has_vm_templates", sql_server, sql_user, sql_pass, sql_db)
     for lab_template in labs_has_vm_templates:
@@ -204,25 +284,19 @@ def get_labs():
                 lab['users'] += vm['users']
                 # Remove duplicates
                 lab['users'] = list(set(lab['users']))
+
+    # Add the tags for each lab
+    for lab in labsJSON:
+        lab['tags'] = []
+    labs_has_tags = ironsight_sql.query(
+        "SELECT * FROM labs_has_tags", sql_server, sql_user, sql_pass, sql_db)
+    for lab_tag in labs_has_tags:
+        for lab in labsJSON:
+            if lab_tag['lab_num'] == lab['lab_num']:
+                lab['tags'].append(lab_tag['tag'])
+
     return json.dumps(labsJSON)
 
-def get_courses():
-    tags = get_tags()
-    tags = json.loads(tags)
-    classes = []
-    images = []
-    for tag in tags:
-        if tag['type'] == 'class':
-            classes.append(tag)
-        if tag['type'] == 'image_link':
-            images.append(tag)
-    # Each image has a matching sub_tag with a class sub_tag
-    for image in images:
-        for class_tag in classes:
-            if image['sub_tag'] == class_tag['sub_tag']:
-                class_tag['image_link'] = image['tag']
-                
-    return json.dumps(classes)
 
 def get_lab_overview(lab_num):
     # Get the lab info by using the lab_num
@@ -235,6 +309,8 @@ def get_lab_overview(lab_num):
     return json.dumps(lab_response)
 
 # Print templates nicely in console
+
+
 def list_templates():
     templatesJSON = get_templates()
     ironsight_sql.pretty_response(templatesJSON)
@@ -248,10 +324,11 @@ def post_request(url, data, token):
                              'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
     return response
 
+
 def post_request_params(url, token):
     urllib3.disable_warnings()
     response = requests.post(url, verify=False, headers={
-                                'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
+        'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
     return response
 
 
@@ -264,8 +341,9 @@ def get_request(url, token):
 
 def create_vm(vm_name, template_choice, user_name, template_override=None):
     # Load in templates from SQL
-    templatesJSON = ironsight_sql.query("SELECT * FROM vm_templates", sql_server, sql_user, sql_pass, sql_db)
-    
+    templatesJSON = ironsight_sql.query(
+        "SELECT * FROM vm_templates", sql_server, sql_user, sql_pass, sql_db)
+
     # Account for template override
     if template_override is not None:
         print("Using template override: " + template_override)
@@ -467,8 +545,6 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
     print("Elastic Domin: " + elastic_url)
     print("Creating VM...")
 
-    print(json.dumps(jsonData))
-
     # Add VM to the MySQL database
     port = -1
     # Get a free port between 5900 and 65535
@@ -484,63 +560,36 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
         print("Error: No free ports available")
         sys.exit(1)
     print("Adding VM to the MySQL database...")
-    # INSERT INTO `ironsight`.`virtual_machines` (`vm_name`, `harvester_vm_name`, `port_number`, `template_name`, `tags`) VALUES ('android-tharrison', 'android-tharrison-harvester-name', '5904', 'android', '{\"tags\": [\"android\"]}');
-
-    # A tag looks like this:
-    # {"tag": "tag_name", "type": "tag_type", "tag_id": "tag_id"}
-    tags = {"tags": []}
-    if template_override is not None:
-        if 'tags' in template_override:
-            for tag in template_override['tags']:
-                tags['tags'].append(tag)
-
-    # Check tabs for any tags with type 'lab' and add them to the labs list
-    labs = []
-    for tag in tags['tags']:
-        if tag['type'] == 'lab':
-            labs.append(tag['tag'])
-            print("Adding VM to lab: " + tag['tag'])
-    if len(labs) == 0:
-        print("No labs found")
-    
-    # Convert the vm_user into a tag and add it to the tags list
-    # Check if the user is already in the tags list in the SQL database
-    tag_query = "SELECT * FROM tags WHERE tag = '" + user_name + "'"
-    result = ironsight_sql.query(tag_query, sql_server, sql_user, sql_pass, sql_db)
-    if len(result) > 0:
-        tag_id = result[0]['tag_id']
-    else:
-        tag_id = -1
-    tags['tags'].append({"tag": user_name, "type": "user", "tag_id": tag_id})
-
-    # Stringify and escape the tags list
-    tags_string = json.dumps(tags)
 
     if not redeploy:
-        # query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name, tags) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "', '{\"tags\": [\"" + user_name + "\"]}\')")
-        query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name, tags) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "', '" + tags_string + "')")
+        # query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "')")
+        query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name) VALUES ('" +
+                    vm_name + "', '" + vm_name + "', '" + str(port) + "', '" + template_choice + "')")
         print(query)
-        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db) 
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
 
         # The SQL database also has many-to-many relationships between users and virtual machines
         # The keys are vm_name and user_name. The table is called virtual_machine_has_users
         # The query is:
         # INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('android-tharrison', 'tyler_harrison');
-        query = str("INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('" + vm_name + "', '" + user_name + "')")
+        query = str("INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('" +
+                    vm_name + "', '" + user_name + "')")
         ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
 
         # There is another many-to-many relationship between virtual machines and labs
         # The keys are vm_name and lab_num. The table is called virtual_machine_has_labs
         # The query is:
         # INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('android-tharrison', '1');
-        for lab in labs:
-            query = str("INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('" + vm_name + "', '" + lab + "')")
-            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+        # for lab in labs:
+        #     query = str(
+        #         "INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('" + vm_name + "', '" + lab + "')")
+        #     ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
 
     print("VM Added to the MySQL database with port: " + str(port))
 
     # Create VM with Harvester API
-    create_vm_url = harvester_url + "/apis/kubevirt.io/v1/namespaces/default/virtualmachines/"
+    create_vm_url = harvester_url + \
+        "/apis/kubevirt.io/v1/namespaces/default/virtualmachines/"
     postResponse = post_request(create_vm_url, jsonData, harvester_token)
     print(postResponse.status_code)
     if postResponse.status_code == 409:
@@ -552,6 +601,7 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
         print("Error creating VM")
         pprint(postResponse.text.strip())
         sys.exit(1)
+
 
 def get_node_names():
     query_url = harvester_url + "/v1/harvester/nodes"
@@ -569,6 +619,7 @@ def get_num_vms():
     query_url = harvester_url + "/v1/harvester/kubevirt.io.virtualmachines/default"
     getResponse = get_request(query_url, harvester_token)
     return len(getResponse.json()['data'])
+
 
 def get_harvester_vms():
     query_url = harvester_url + "/v1/harvester/kubevirt.io.virtualmachines/default"
@@ -690,6 +741,7 @@ def get_memory_usage(start_time, end_time, step):
         response['data']['result'][i]['metric']['instance'] = instance
     return(json.dumps(response))
 
+
 def get_disk_usage(start_time, end_time, step):
     nodemap = json.loads(get_node_names())
     # Disk read
@@ -735,12 +787,14 @@ def get_disk_usage(start_time, end_time, step):
     # Print response
     return(json.dumps(response))
 
+
 def get_vm_cpu_usage(start_time, end_time, step):
     query_url = harvester_url + \
         f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(avg(rate(kubevirt_vmi_vcpu_seconds%5B5m%5D))%20by%20(domain%2C%20name)))%20&start={start_time}&end={end_time}&step={step}"
     getResponse = get_request(query_url, harvester_token)
     response = json.loads(getResponse.text)
     return(json.dumps(response))
+
 
 def get_vm_memory_usage(start_time, end_time, step):
     query_url = harvester_url + \
@@ -749,12 +803,14 @@ def get_vm_memory_usage(start_time, end_time, step):
     response = json.loads(getResponse.text)
     return(json.dumps(response))
 
+
 def get_vm_storage_read_usage(start_time, end_time, step):
     query_url = harvester_url + \
         f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(irate(kubevirt_vmi_storage_read_traffic_bytes_total%5B5m%5D)))%20&start={start_time}&end={end_time}&step={step}"
     getResponse = get_request(query_url, harvester_token)
     response = json.loads(getResponse.text)
     return(json.dumps(response))
+
 
 def get_vm_storage_write_usage(start_time, end_time, step):
     query_url = harvester_url + \
@@ -763,12 +819,14 @@ def get_vm_storage_write_usage(start_time, end_time, step):
     response = json.loads(getResponse.text)
     return(json.dumps(response))
 
+
 def get_vm_network_read_usage(start_time, end_time, step):
     query_url = harvester_url + \
         f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(irate(kubevirt_vmi_network_receive_bytes_total%5B5m%5D)*8))&start={start_time}&end={end_time}&step={step}"
     getResponse = get_request(query_url, harvester_token)
     response = json.loads(getResponse.text)
     return(json.dumps(response))
+
 
 def get_vm_network_write_usage(start_time, end_time, step):
     query_url = harvester_url + \
@@ -777,6 +835,7 @@ def get_vm_network_write_usage(start_time, end_time, step):
     response = json.loads(getResponse.text)
     return(json.dumps(response))
 
+
 def get_vm_network_packets_received(start_time, end_time, step):
     query_url = harvester_url + \
         f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(delta(kubevirt_vmi_network_receive_packets_total%5B5m%5D)))&start={start_time}&end={end_time}&step={step}"
@@ -784,12 +843,14 @@ def get_vm_network_packets_received(start_time, end_time, step):
     response = json.loads(getResponse.text)
     return(json.dumps(response))
 
+
 def get_vm_network_packets_sent(start_time, end_time, step):
     query_url = harvester_url + \
         f"/api/v1/namespaces/cattle-monitoring-system/services/http:rancher-monitoring-grafana:80/proxy/api/datasources/proxy/1/api/v1/query_range?query=topk(10%2C%20(delta(kubevirt_vmi_network_transmit_packets_total%5B5m%5D)))&start={start_time}&end={end_time}&step={step}"
     getResponse = get_request(query_url, harvester_token)
     response = json.loads(getResponse.text)
     return(json.dumps(response))
+
 
 def power_on_vm(vm_name):
     query_url = harvester_url + \
@@ -804,6 +865,7 @@ def power_on_vm(vm_name):
         jsonResponse['status'] = postResponse.text.split(": ")[1]
     return(json.dumps(jsonResponse))
 
+
 def power_off_vm(vm_name):
     query_url = harvester_url + \
         f"/v1/harvester/kubevirt.io.virtualmachines/default/{vm_name}?action=stop"
@@ -817,6 +879,7 @@ def power_off_vm(vm_name):
         jsonResponse['status'] = postResponse.text.split(": ")[1]
     return(json.dumps(jsonResponse))
 
+
 def power_toggle_vm(vm_name):
     # If the VM is running, stop it
     vms_list = json.loads(get_harvester_vms())
@@ -829,6 +892,7 @@ def power_toggle_vm(vm_name):
                 power_on_vm(vm_name)
                 return(json.dumps({"status": "success"}))
     return(json.dumps({"status": "error"}))
+
 
 if __name__ == "__main__":
     print("This script is a module for the Ironsight project. It is not meant to be run directly.")
