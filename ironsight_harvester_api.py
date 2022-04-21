@@ -209,9 +209,12 @@ def get_users():
     usersJSON = ironsight_sql.query(
         "SELECT * FROM users", sql_server, sql_user, sql_pass, sql_db)
 
-    # Populate virtual_machines with empty list
+    # Populate users with the needed empty lists
     for user in usersJSON:
         user['virtual_machines'] = []
+        user['roles'] = []
+        user['tags'] = []
+        user['courses'] = []
 
     # Handle the many-to-many relationship between virtual machines and users ("virtual_machine_has_users")
     virtual_machine_has_users = ironsight_sql.query(
@@ -220,10 +223,8 @@ def get_users():
         for user in usersJSON:
             if vm_user['user_name'] == user['user_name']:
                 user['virtual_machines'].append(vm_user['vm_name'])
-
+    
     # Get the roles for each user
-    for user in usersJSON:
-        user['roles'] = []
     user_has_roles = ironsight_sql.query(
         "SELECT * FROM users_has_roles", sql_server, sql_user, sql_pass, sql_db)
     for user_role in user_has_roles:
@@ -231,9 +232,20 @@ def get_users():
             if user_role['user_name'] == user['user_name']:
                 user['roles'].append(user_role['role'])
 
+    # Get the courses for each user
+    courses = json.loads(get_courses())
+    courses_has_users = ironsight_sql.query(
+        "SELECT * FROM courses_has_users", sql_server, sql_user, sql_pass, sql_db)
+
+    # Add courses to users using course_id
+    for course_user in courses_has_users:
+        for user in usersJSON:
+            if course_user['user_name'] == user['user_name']:
+                for course in courses:
+                    user['courses'].append(
+                        {'course_id': course['course_id'], 'course_name': course['course_name']})
+
     # Get the tags for each user
-    for user in usersJSON:
-        user['tags'] = []
     user_has_tags = ironsight_sql.query(
         "SELECT * FROM users_has_tags", sql_server, sql_user, sql_pass, sql_db)
     tags = ironsight_sql.query(
