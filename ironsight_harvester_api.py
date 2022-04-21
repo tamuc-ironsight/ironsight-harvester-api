@@ -561,19 +561,27 @@ def delete_course (course_data):
 
     print("Successfully deleted course: " + course_data['course_id'])
 
-def create_vm(vm_name, template_choice, user_name, template_override=None):
+def create_vm(vm_data):
+
+    # Check if vm already exists
+    vms = get_vms()
+    vms = json.loads(vms)
+    for vm in vms:
+        if vm['vm_name'] == vm_data['vm_name']:
+            print("Error: VM already exists")
+            return
+
+    # Get a few variables from the user
+    vm_name = vm_data['vm_name']
+    user_name = vm_data['user_name']
+    template_choice = vm_data['template_name']
+    course_id = vm_data['course_id']
+    lab_num = vm_data['lab_num']
+    template_override = vm_data['template_override']
+
     # Load in templates from SQL
     templatesJSON = ironsight_sql.query(
         "SELECT * FROM vm_templates", sql_server, sql_user, sql_pass, sql_db)
-
-    # Account for template override
-    if template_override is not None:
-        print("Using template override: " + template_override)
-        try:
-            template_override = json.loads(template_override)
-        except:
-            print("Template override is not valid JSON")
-            return
 
     # Make sure template exists in SQL, if so, get image name and image size (in gigabytes)
     # Otherwise, print error and exit
@@ -608,14 +616,6 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
 
     elastic_enrolled = bool(templateData['elastic_enrolled'])
     redeploy = False
-    # If template override is not None, check if elastic_enrolled is set in template override
-    if template_override is not None:
-        if 'elastic_enrolled' in template_override:
-            elastic_enrolled = bool(template_override['elastic_enrolled'])
-            del template_override['elastic_enrolled']
-        if 'redeploy' in template_override:
-            redeploy = bool(template_override['redeploy'])
-            del template_override['redeploy']
 
     # Determine if VM should be enrolled in Elasticsearch or not
     if elastic_enrolled:
@@ -653,10 +653,8 @@ def create_vm(vm_name, template_choice, user_name, template_override=None):
 
     # Get user's specs from template['template_data]
     # If user has not specified any specs, use default specs
-    if template_override is None:
-        user_specs = json.loads(templateData['template_data'])
-    else:
-        user_specs = template_override
+    user_specs = json.loads(templateData['template_data'])
+
     if user_specs == {'': ''}:
         specs = default_specs
     else:
@@ -1131,8 +1129,8 @@ def handle_event(encoded_data):
             create_lab(data['data'])
         if data['type'] == "course":
             create_course(data['data'])
-        # elif data['type'] == "vm":
-        #     create_vm(data['data'])
+        elif data['type'] == "vm":
+            create_vm(data['data'])
     # TODO: Add update event handling
     # elif data['action'] == "update":
     #     if data['type'] == "user":
