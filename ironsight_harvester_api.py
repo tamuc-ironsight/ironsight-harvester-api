@@ -510,6 +510,57 @@ def delete_lab (lab_data):
 
     print("Successfully deleted lab: " + lab_data['lab_name'])
 
+def create_course (course_data):
+    # Check if course already exists
+    courses = get_courses()
+    courses = json.loads(courses)
+    for course in courses:
+        if course['course_id'] == course_data['course_id']:
+            print("Error: Course already exists")
+            return
+
+    # Add the course to the database
+    query = "INSERT INTO courses (`course_id`, `course_name`, `course_thumbnail`) VALUES ('" + \
+        course_data['course_id'] + "', '" + course_data['course_name'] + "', '" + \
+        course_data['thumbnail'] + "')"
+    ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    # Add the course to the many-to-many relationship between tags and courses ("courses_has_tags")
+    for tag in course_data['tags']:
+        query = "INSERT INTO courses_has_tags (`course_id`, `tag`) VALUES ('" + \
+            course_data['course_id'] + "', '" + tag + "')"
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    print("Course created successfully")
+
+def delete_course (course_data):
+    # Check if course exists
+    courses = get_courses()
+    courses = json.loads(courses)
+    for course in courses:
+        if course['course_id'] == course_data['course_id']:
+            # Delete course from many-to-many relationship between tags and courses ("courses_has_tags")
+            query = "DELETE FROM courses_has_tags WHERE `course_id` = '" + \
+                course_data['course_id'] + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+            # Delete course from many-to-many relationship between labs and courses ("courses_has_labs")
+            query = "DELETE FROM courses_has_labs WHERE `course_id` = '" + \
+                course_data['course_id'] + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+            # Delete course from many-to-many relationship between users and courses ("courses_has_users")
+            query = "DELETE FROM courses_has_users WHERE `course_id` = '" + \
+                course_data['course_id'] + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+            # Delete course
+            query = "DELETE FROM courses WHERE `course_id` = '" + \
+                course_data['course_id'] + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    print("Successfully deleted course: " + course_data['course_id'])
+
 def create_vm(vm_name, template_choice, user_name, template_override=None):
     # Load in templates from SQL
     templatesJSON = ironsight_sql.query(
@@ -1078,6 +1129,8 @@ def handle_event(encoded_data):
             create_user(data['data'])
         if data['type'] == "lab":
             create_lab(data['data'])
+        if data['type'] == "course":
+            create_course(data['data'])
         # elif data['type'] == "vm":
         #     create_vm(data['data'])
     # TODO: Add update event handling
@@ -1091,6 +1144,8 @@ def handle_event(encoded_data):
             delete_user(data['data'])
         if data['type'] == "lab":
             delete_lab(data['data'])
+        if data['type'] == "course":
+            delete_course(data['data'])
         # elif data['type'] == "vm":
         #     delete_vm(data['data'])
 
