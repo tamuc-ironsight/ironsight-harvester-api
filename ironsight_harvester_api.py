@@ -10,6 +10,7 @@ import json
 import random
 import string
 import sys
+import base64
 
 # Determine if config.json is here or in parent directory
 
@@ -350,6 +351,78 @@ def get_request(url, token):
     response = requests.get(url, verify=False, headers={
                             'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
     return response
+
+
+def create_user(user_data):
+    # Check if user already exists
+    users = get_users()
+    users = json.loads(users)
+    for user in users:
+        if user['user_name'] == user_data['user_name']:
+            print("Error: User already exists")
+            return
+
+    # Get the courses, tags, and roles for the user
+    courses = user_data['courses']
+    tags = user_data['tags']
+    roles = user_data['roles']
+
+    # Create user
+    query = "INSERT INTO users (`user_name`, `first_name`, `last_name`, `password`, `profile_pic_data`) VALUES ('" + \
+        user_data['user_name'] + "', '" + user_data['first_name'] + "', '" + user_data['last_name'] + \
+            "', '" + user_data['password'] + "', '" + \
+        user_data['profile_pic_data'] + "')"
+    ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    # Insert the user into the many-to-many relationship between courses and users ("courses_has_users")
+    for course in courses:
+        query = "INSERT INTO courses_has_users (`course_id`, `user_name`) VALUES ('" + \
+            course + "', '" + user_data['user_name'] + "')"
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    # Insert the user into the many-to-many relationship between tags and users ("users_has_tags")
+    for tag in tags:
+        query = "INSERT INTO users_has_tags (`user_name`, `tag`) VALUES ('" + \
+            user_data['user_name'] + "', '" + tag + "')"
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    # Insert the user into the many-to-many relationship between roles and users ("users_has_roles")
+    for role in roles:
+        query = "INSERT INTO users_has_roles (`user_name`, `role`) VALUES ('" + \
+            user_data['user_name'] + "', '" + role + "')"
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    print("User created successfully")
+    return json.dumps(user_data)
+
+
+def delete_user(user_data):
+    # Check if user exists
+    users = get_users()
+    users = json.loads(users)
+    for user in users:
+        if user['user_name'] == user_data['user_name']:
+            # Delete user from many-to-many relationship between courses and users ("courses_has_users")
+            query = "DELETE FROM courses_has_users WHERE `user_name` = '" + \
+                user_data['user_name'] + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+            # Delete user from many-to-many relationship between tags and users ("users_has_tags")
+            query = "DELETE FROM users_has_tags WHERE `user_name` = '" + \
+                user_data['user_name'] + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+            # Delete user from many-to-many relationship between roles and users ("users_has_roles")
+            query = "DELETE FROM users_has_roles WHERE `user_name` = '" + \
+                user_data['user_name'] + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+            # Delete user
+            query = "DELETE FROM users WHERE `user_name` = '" + \
+                user_data['user_name'] + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    print("Successfully deleted user: " + user_data['user_name'])
 
 
 def create_vm(vm_name, template_choice, user_name, template_override=None):
@@ -905,6 +978,32 @@ def power_toggle_vm(vm_name):
                 power_on_vm(vm_name)
                 return(json.dumps({"status": "success"}))
     return(json.dumps({"status": "error"}))
+
+
+def handle_event(encoded_data):
+    data = {}
+    try:
+        data = json.loads(base64.b64decode(encoded_data))
+    except:
+        print("Error: Could not decode base64 data")
+        return
+
+    if data['action'] == "create":
+        if data['type'] == "user":
+            create_user(data['data'])
+        elif data['type'] == "vm":
+            create_vm(data['data'])
+    # TODO: Add update event handling
+    # elif data['action'] == "update":
+    #     if data['type'] == "user":
+    #         update_user(data['data'])
+    #     elif data['type'] == "vm":
+    #         update_vm(data['data'])
+    elif data['action'] == "delete":
+        if data['type'] == "user":
+            delete_user(data['data'])
+        # elif data['type'] == "vm":
+        #     delete_vm(data['data'])
 
 
 if __name__ == "__main__":
