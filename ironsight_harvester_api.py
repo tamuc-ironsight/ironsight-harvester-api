@@ -436,6 +436,79 @@ def delete_user(user_data):
 
     print("Successfully deleted user: " + user_data['user_name'])
 
+def create_lab (lab_data):
+    # Check if lab already exists
+    labs = get_labs()
+    labs = json.loads(labs)
+    for lab in labs:
+        if lab['lab_name'] == lab_data['lab_name']:
+            print("Error: Lab already exists")
+            return
+    
+    # Get a lab_num that is not in the database
+    lab_num = -1
+    for lab in labs:
+        if lab['lab_num'] > lab_num:
+            lab_num = lab['lab_num']
+    lab_num += 1
+
+    # Add the lab to the database
+    query = "INSERT INTO labs (`lab_num`, `lab_name`, `lab_description`, `date_start`, `date_end`) VALUES ('" + \
+        str(lab_num) + "', '" + lab_data['lab_name'] + "', '" + lab_data['lab_description'] + "', '" + \
+        lab_data['date_start'] + "', '" + lab_data['date_end'] + "')"
+    ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    # Add the lab to the many-to-many relationship between courses and labs ("courses_has_labs")
+    query = "INSERT INTO courses_has_labs (`course_id`, `lab_num`) VALUES ('" + \
+        lab_data['course'] + "', '" + str(lab_num) + "')"
+    ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    # Add the lab to the many-to-many relationship between tags and labs ("labs_has_tags")
+    for tag in lab_data['tags']:
+        query = "INSERT INTO labs_has_tags (`lab_num`, `tag`) VALUES ('" + \
+            str(lab_num) + "', '" + tag + "')"
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    # Add the lab to the many-to-many relationship between vm_templates and labs ("labs_has_vm_templates")
+    for vm_template in lab_data['vm_templates']:
+        query = "INSERT INTO labs_has_vm_templates (`lab_num`, `template_name`) VALUES ('" + \
+            str(lab_num) + "', '" + vm_template + "')"
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+    
+    print("Lab created successfully")
+
+def delete_lab (lab_data):
+    # Check if lab exists
+    labs = get_labs()
+    labs = json.loads(labs)
+    for lab in labs:
+        if lab['lab_name'] == lab_data['lab_name']:
+            # Delete lab from many-to-many relationship between courses and labs ("courses_has_labs")
+            query = "DELETE FROM courses_has_labs WHERE `lab_num` = '" + \
+                str(lab['lab_num']) + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+            # Delete lab from many-to-many relationship between tags and labs ("labs_has_tags")
+            query = "DELETE FROM labs_has_tags WHERE `lab_num` = '" + \
+                str(lab['lab_num']) + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+            # Delete lab from many-to-many relationship between vm_templates and labs ("labs_has_vm_templates")
+            query = "DELETE FROM labs_has_vm_templates WHERE `lab_num` = '" + \
+                str(lab['lab_num']) + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+            # Delete lab from many-to-many relationship between virtual machines and labs ("virtual_machine_has_labs")
+            query = "DELETE FROM virtual_machine_has_labs WHERE `lab_num` = '" + \
+                str(lab['lab_num']) + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+            # Delete lab
+            query = "DELETE FROM labs WHERE `lab_num` = '" + \
+                str(lab['lab_num']) + "'"
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+    print("Successfully deleted lab: " + lab_data['lab_name'])
 
 def create_vm(vm_name, template_choice, user_name, template_override=None):
     # Load in templates from SQL
@@ -1003,8 +1076,10 @@ def handle_event(encoded_data):
     if data['action'] == "create":
         if data['type'] == "user":
             create_user(data['data'])
-        elif data['type'] == "vm":
-            create_vm(data['data'])
+        if data['type'] == "lab":
+            create_lab(data['data'])
+        # elif data['type'] == "vm":
+        #     create_vm(data['data'])
     # TODO: Add update event handling
     # elif data['action'] == "update":
     #     if data['type'] == "user":
@@ -1014,6 +1089,8 @@ def handle_event(encoded_data):
     elif data['action'] == "delete":
         if data['type'] == "user":
             delete_user(data['data'])
+        if data['type'] == "lab":
+            delete_lab(data['data'])
         # elif data['type'] == "vm":
         #     delete_vm(data['data'])
 
