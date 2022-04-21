@@ -235,12 +235,15 @@ def get_users():
         user['tags'] = []
     user_has_tags = ironsight_sql.query(
         "SELECT * FROM users_has_tags", sql_server, sql_user, sql_pass, sql_db)
+    tags = ironsight_sql.query(
+        "SELECT * FROM tags", sql_server, sql_user, sql_pass, sql_db)
+
     for user_tag in user_has_tags:
         for user in usersJSON:
             if user_tag['user_name'] == user['user_name']:
-                user['tags'].append(user_tag['tag'])
-
-    return json.dumps(usersJSON)
+                for tag in tags:
+                    if tag['tag'] == user_tag['tag']:
+                        user['tags'].append(tag)
 
     return json.dumps(usersJSON)
 
