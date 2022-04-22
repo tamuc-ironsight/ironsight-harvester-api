@@ -223,7 +223,7 @@ def get_users():
         for user in usersJSON:
             if vm_user['user_name'] == user['user_name']:
                 user['virtual_machines'].append(vm_user['vm_name'])
-    
+
     # Get the roles for each user
     user_has_roles = ironsight_sql.query(
         "SELECT * FROM users_has_roles", sql_server, sql_user, sql_pass, sql_db)
@@ -242,8 +242,7 @@ def get_users():
         for course_user in courses_has_users:
             for user in usersJSON:
                 if course_user['user_name'] == user['user_name'] and course['course_id'] == course_user['course_id']:
-                    user['courses'].append(
-                        {'course_id': course['course_id'], 'course_name': course['course_name']})
+                    user['courses'].append(course)
 
     # Get the tags for each user
     user_has_tags = ironsight_sql.query(
@@ -436,7 +435,8 @@ def delete_user(user_data):
 
     print("Successfully deleted user: " + user_data['user_name'])
 
-def create_lab (lab_data):
+
+def create_lab(lab_data):
     # Check if lab already exists
     labs = get_labs()
     labs = json.loads(labs)
@@ -444,7 +444,7 @@ def create_lab (lab_data):
         if lab['lab_name'] == lab_data['lab_name']:
             print("Error: Lab already exists")
             return
-    
+
     # Get a lab_num that is not in the database
     lab_num = -1
     for lab in labs:
@@ -474,10 +474,11 @@ def create_lab (lab_data):
         query = "INSERT INTO labs_has_vm_templates (`lab_num`, `template_name`) VALUES ('" + \
             str(lab_num) + "', '" + vm_template + "')"
         ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
-    
+
     print("Lab created successfully")
 
-def delete_lab (lab_data):
+
+def delete_lab(lab_data):
     # Check if lab exists
     labs = get_labs()
     labs = json.loads(labs)
@@ -510,7 +511,8 @@ def delete_lab (lab_data):
 
     print("Successfully deleted lab: " + lab_data['lab_name'])
 
-def create_course (course_data):
+
+def create_course(course_data):
     # Check if course already exists
     courses = get_courses()
     courses = json.loads(courses)
@@ -533,7 +535,8 @@ def create_course (course_data):
 
     print("Course created successfully")
 
-def delete_course (course_data):
+
+def delete_course(course_data):
     # Check if course exists
     courses = get_courses()
     courses = json.loads(courses)
@@ -560,6 +563,7 @@ def delete_course (course_data):
             ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
 
     print("Successfully deleted course: " + course_data['course_id'])
+
 
 def create_vm(vm_data):
 
