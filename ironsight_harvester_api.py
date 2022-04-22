@@ -263,15 +263,16 @@ def get_users():
 def get_labs():
     labsJSON = ironsight_sql.query(
         "SELECT * FROM labs", sql_server, sql_user, sql_pass, sql_db)
+    # Populate labs with empty lists
     # Fix datetime.datetime object to make it JSON serializable
     for lab in labsJSON:
         lab['date_start'] = str(lab['date_start'])
         lab['date_end'] = str(lab['date_end'])
-
-    # Populate labs with empty lists
-    for lab in labsJSON:
         lab['virtual_machines'] = []
         lab['templates'] = []
+        lab['course_id'] = ""
+        lab['tags'] = []
+        lab['users'] = []
 
     # Handle the many-to-many relationship between virtual machines and labs ("virtual_machine_has_labs")
     virtual_machine_has_labs = ironsight_sql.query(
@@ -289,20 +290,7 @@ def get_labs():
             if lab_template['lab_num'] == lab['lab_num']:
                 lab['templates'].append(lab_template['template_name'])
 
-    # Use get_vms() to get the users for each lab
-    vmsJSON = get_vms()
-    vms = json.loads(vmsJSON)
-    for lab in labsJSON:
-        lab['users'] = []
-        for vm in vms:
-            if lab['lab_num'] in vm['labs']:
-                lab['users'] += vm['users']
-                # Remove duplicates
-                lab['users'] = list(set(lab['users']))
-
     # Get the course for each lab
-    for lab in labsJSON:
-        lab['course_id'] = ""
     courses_has_labs = ironsight_sql.query(
         "SELECT * FROM courses_has_labs", sql_server, sql_user, sql_pass, sql_db)
     for course_lab in courses_has_labs:
@@ -311,14 +299,19 @@ def get_labs():
                 lab['course_id'] = (course_lab['course_id'])
 
     # Add the tags for each lab
-    for lab in labsJSON:
-        lab['tags'] = []
     labs_has_tags = ironsight_sql.query(
         "SELECT * FROM labs_has_tags", sql_server, sql_user, sql_pass, sql_db)
     for lab_tag in labs_has_tags:
         for lab in labsJSON:
             if lab_tag['lab_num'] == lab['lab_num']:
                 lab['tags'].append(lab_tag['tag'])
+
+    # Add the users to each lab
+    for course in json.loads(get_courses()):
+        for lab in labsJSON:
+            if course['course_id'] == lab['course_id']:
+                for user in course['users']:
+                    lab['users'].append(user)
 
     return json.dumps(labsJSON)
 
