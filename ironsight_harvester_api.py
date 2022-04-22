@@ -238,10 +238,10 @@ def get_users():
         "SELECT * FROM courses_has_users", sql_server, sql_user, sql_pass, sql_db)
 
     # Add courses to users using course_id
-    for course_user in courses_has_users:
-        for user in usersJSON:
-            if course_user['user_name'] == user['user_name']:
-                for course in courses:
+    for course in courses:
+        for course_user in courses_has_users:
+            for user in usersJSON:
+                if course_user['user_name'] == user['user_name'] and course['course_id'] == course_user['course_id']:
                     user['courses'].append(
                         {'course_id': course['course_id'], 'course_name': course['course_name']})
 
