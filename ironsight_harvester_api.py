@@ -572,9 +572,14 @@ def create_vm(vm_data):
     vm_name = vm_data['vm_name']
     user_name = vm_data['user_name']
     template_choice = vm_data['template_name']
-    course_id = vm_data['course_id']
-    lab_num = vm_data['lab_num']
-    template_override = vm_data['template_override']
+    if 'course_id' in vm_data:
+        course_id = vm_data['course_id']
+    if 'lab_num' in vm_data:
+        lab_num = vm_data['lab_num']
+    if 'template_override' in vm_data:
+        template_override = vm_data['template_override']
+        if 'elastic_enrolled' in template_override:
+            elastic_enrolled = bool(template_override['elastic_enrolled'])
 
     # Load in templates from SQL
     templatesJSON = ironsight_sql.query(
@@ -612,7 +617,13 @@ def create_vm(vm_data):
     claim_name = vm_name + "-claim" + random_letters
 
     elastic_enrolled = bool(templateData['elastic_enrolled'])
-    redeploy = False
+    if 'template_override' in vm_data:
+        if 'elastic_enrolled' in vm_data['template_override']:
+            elastic_enrolled = bool(vm_data['template_override']['elastic_enrolled'])
+        if 'redeploy' in vm_data['template_override']:
+            redeploy = bool(vm_data['template_override']['redeploy'])
+        else:
+            redeploy = False
 
     # Determine if VM should be enrolled in Elasticsearch or not
     if elastic_enrolled:
@@ -657,6 +668,9 @@ def create_vm(vm_data):
     else:
         # Merge user's specs with default specs and overwrite default specs with user's specs
         specs = {**default_specs, **user_specs}
+
+    if 'template_override' in vm_data:
+        specs = {**specs, **vm_data['template_override']}
 
     jsonData = {
         "apiVersion": "kubevirt.io/v1",
@@ -762,23 +776,23 @@ def create_vm(vm_data):
     print("Elastic Domin: " + elastic_url)
     print("Creating VM...")
 
-    # Add VM to the MySQL database
-    port = -1
-    # Get a free port between 5900 and 65535
-    used_ports = ironsight_sql.query(
-        "SELECT port_number FROM virtual_machines", sql_server, sql_user, sql_pass, sql_db)
-    # Map list of dictionaries to list of ports
-    used_ports = [x['port_number'] for x in used_ports]
-    for i in range(5900, 65535):
-        if i not in used_ports:
-            port = i
-            break
-    if port == -1:
-        print("Error: No free ports available")
-        sys.exit(1)
-    print("Adding VM to the MySQL database...")
-
     if not redeploy:
+        # Add VM to the MySQL database
+        print("Adding VM to the MySQL database...")
+        port = -1
+        # Get a free port between 5900 and 65535
+        used_ports = ironsight_sql.query(
+            "SELECT port_number FROM virtual_machines", sql_server, sql_user, sql_pass, sql_db)
+        # Map list of dictionaries to list of ports
+        used_ports = [x['port_number'] for x in used_ports]
+        for i in range(5900, 65535):
+            if i not in used_ports:
+                port = i
+                break
+        if port == -1:
+            print("Error: No free ports available")
+            sys.exit(1)
+
         # query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name) VALUES ('" + vm_name + "', '" + vm_name + "-harvester-name', '" + str(port) + "', '" + template_choice + "')")
         query = str("INSERT INTO virtual_machines (vm_name, harvester_vm_name, port_number, template_name) VALUES ('" +
                     vm_name + "', '" + vm_name + "', '" + str(port) + "', '" + template_choice + "')")
@@ -802,9 +816,12 @@ def create_vm(vm_data):
         #         "INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('" + vm_name + "', '" + lab + "')")
         #     ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
 
-    print("VM Added to the MySQL database with port: " + str(port))
+        print("VM Added to the MySQL database with port: " + str(port))
+    else:
+        print("Skipping SQL enrollment...")
 
     # Create VM with Harvester API
+    print("Creating Harvester VM...")
     create_vm_url = harvester_url + \
         "/apis/kubevirt.io/v1/namespaces/default/virtualmachines/"
     postResponse = post_request(create_vm_url, jsonData, harvester_token)
