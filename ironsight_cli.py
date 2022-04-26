@@ -79,12 +79,12 @@ if __name__ == "__main__":
                 "Enter CPU override: ")
             data["data"]["template_override"]["memory"] = input(
                 "Enter Memory override: ")
-            data["data"]["template_override"]["elastic_enrolled"] = (input(
-                "Enter Elastic Enrolled override (0-1): "))
+            data["data"]["template_override"]["elastic_enrolled"] = bool(input(
+                "Enter Elastic Enrolled override (0-1): ") == "1")
             data["data"]["template_override"]["redeploy"] = bool(input(
-                "Enter Is Redeploy (0-1): "))
+                "Enter Is Redeploy (0-1): ") == "1")
             data["data"]["template_override"]["running"] = bool(input(
-                "Enter Is Running (0-1): "))
+                "Enter Is Running (0-1): ") == "1")
             send_event(data)
         if choice == "3":
             print("Delete Virtual Machine")
