@@ -628,15 +628,15 @@ def create_vm(vm_data):
         print("\nOverriding template settings")
         if 'elastic_enrolled' in vm_data['template_override'] and vm_data['template_override']['elastic_enrolled'] != "":
             print("Overriding elastic enrolled")
-            elastic_enrolled = bool(int(vm_data['template_override']['elastic_enrolled']))
+            elastic_enrolled = bool(vm_data['template_override']['elastic_enrolled'])
             print("Elastic enrolled: " + str(elastic_enrolled))
         if 'redeploy' in vm_data['template_override'] and vm_data['template_override']['redeploy'] != "":
-            redeploy = bool(int(vm_data['template_override']['redeploy']))
+            redeploy = bool(vm_data['template_override']['redeploy'])
             print("Redeploy: " + str(redeploy))
         else:
             redeploy = False
         if 'running' in vm_data['template_override'] and vm_data['template_override']['running'] != "":
-            running = bool(int(vm_data['template_override']['running']))
+            running = bool(vm_data['template_override']['running'])
             print("Running: " + str(running))
         else:
             running = True
