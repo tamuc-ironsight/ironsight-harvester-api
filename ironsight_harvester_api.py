@@ -356,6 +356,12 @@ def get_request(url, token):
                             'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
     return response
 
+def delete_request(url, token):
+    urllib3.disable_warnings()
+    response = requests.delete(url, verify=False, headers={
+                            'Content-Type': 'application/json', 'Accept': 'application/json', 'Authorization': 'Bearer ' + token})
+    return response
+
 
 def create_user(user_data):
     # Check if user already exists
@@ -611,19 +617,29 @@ def create_vm(vm_data):
     else:
         user_name_short = user_name.lower()
     vm_name = vm_name.replace("_", "-")
-    vm_name = vm_name + "-" + user_name_short
+    if user_name != "":
+        vm_name = vm_name + "-" + user_name_short
     random_letters = "".join(random.choice(
         string.ascii_lowercase) for i in range(5))
     claim_name = vm_name + "-claim" + random_letters
 
     elastic_enrolled = bool(templateData['elastic_enrolled'])
     if 'template_override' in vm_data:
-        if 'elastic_enrolled' in vm_data['template_override']:
-            elastic_enrolled = bool(vm_data['template_override']['elastic_enrolled'])
-        if 'redeploy' in vm_data['template_override']:
-            redeploy = bool(vm_data['template_override']['redeploy'])
+        print("\nOverriding template settings")
+        if 'elastic_enrolled' in vm_data['template_override'] and vm_data['template_override']['elastic_enrolled'] != "":
+            print("Overriding elastic enrolled")
+            elastic_enrolled = bool(int(vm_data['template_override']['elastic_enrolled']))
+            print("Elastic enrolled: " + str(elastic_enrolled))
+        if 'redeploy' in vm_data['template_override'] and vm_data['template_override']['redeploy'] != "":
+            redeploy = bool(int(vm_data['template_override']['redeploy']))
+            print("Redeploy: " + str(redeploy))
         else:
             redeploy = False
+        if 'running' in vm_data['template_override'] and vm_data['template_override']['running'] != "":
+            running = bool(int(vm_data['template_override']['running']))
+            print("Running: " + str(running))
+        else:
+            running = True
 
     # Determine if VM should be enrolled in Elasticsearch or not
     if elastic_enrolled:
@@ -655,8 +671,7 @@ def create_vm(vm_data):
     default_specs = {
         "cpu_cores": "2",
         "memory": "4",
-        "cloud_init_data": cloud_init_data,
-        "running": True
+        "cloud_init_data": cloud_init_data
     }
 
     # Get user's specs from template['template_data]
@@ -670,7 +685,10 @@ def create_vm(vm_data):
         specs = {**default_specs, **user_specs}
 
     if 'template_override' in vm_data:
-        specs = {**specs, **vm_data['template_override']}
+        if 'cpu_cores' in vm_data['template_override'] and vm_data['template_override']['cpu_cores'] != "":
+            specs['cpu_cores'] = vm_data['template_override']['cpu_cores']
+        if 'memory' in vm_data['template_override'] and vm_data['template_override']['memory'] != "":
+            specs['memory'] = vm_data['template_override']['memory']
 
     jsonData = {
         "apiVersion": "kubevirt.io/v1",
@@ -689,7 +707,7 @@ def create_vm(vm_data):
         },
         "__clone": True,
         "spec": {
-            "running": bool(specs['running']),
+            "running": bool(running),
             "template": {
                 "metadata": {
                     "annotations": {
@@ -803,18 +821,28 @@ def create_vm(vm_data):
         # The keys are vm_name and user_name. The table is called virtual_machine_has_users
         # The query is:
         # INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('android-tharrison', 'tyler_harrison');
-        query = str("INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('" +
-                    vm_name + "', '" + user_name + "')")
-        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+        if user_name != "":
+            query = str("INSERT INTO virtual_machine_has_users (vm_name, user_name) VALUES ('" +
+                        vm_name + "', '" + user_name + "')")
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+        else:
+            print("No user specified, skipping user insertion")
 
-        # There is another many-to-many relationship between virtual machines and labs
-        # The keys are vm_name and lab_num. The table is called virtual_machine_has_labs
-        # The query is:
-        # INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('android-tharrison', '1');
-        # for lab in labs:
-        #     query = str(
-        #         "INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('" + vm_name + "', '" + lab + "')")
-        #     ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+        # Many-to-many relationship between virtual machines and labs
+        if lab_num != "":
+            query = str("INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('" +
+                        vm_name + "', '" + lab_num + "')")
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+        else:
+            print("No lab specified, skipping lab insertion")
+
+        # Many-to-many relationship between virtual machines and courses
+        if course_id != "":
+            query = str("INSERT INTO courses_has_virtual_machines (course_id, vm_name) VALUES ('" +
+                        course_id + "', '" + vm_name + "')")
+            ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+        else:
+            print("No course specified, skipping course insertion")
 
         print("VM Added to the MySQL database with port: " + str(port))
     else:
@@ -836,6 +864,47 @@ def create_vm(vm_data):
         pprint(postResponse.text.strip())
         sys.exit(1)
 
+
+def delete_vm(data):
+    # Get VM name
+    vm_name = data['vm_name']
+
+    print("Deleting VM: " + vm_name +"...")
+
+    # Remove VM from SQL database
+    print("Removing VM from the MySQL database...")
+    # Need to delete from these tables first: virtual_machine_has_users, virtual_machine_has_labs, courses_has_virtual_machines
+    # Then delete from virtual_machines
+    try:
+        query = str("DELETE FROM virtual_machine_has_users WHERE vm_name = '" + vm_name + "'")
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+        query = str("DELETE FROM virtual_machine_has_labs WHERE vm_name = '" + vm_name + "'")
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+        query = str("DELETE FROM courses_has_virtual_machines WHERE vm_name = '" + vm_name + "'")
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+        query = str("DELETE FROM virtual_machines WHERE vm_name = '" + vm_name + "'")
+        ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
+
+        print("VM Removed from the MySQL database")
+    except:
+        print("Error removing VM from the MySQL database")
+
+    # Delete VM with Harvester API
+    print("Deleting Harvester VM...")
+    try:
+        delete_vm_url = harvester_url + \
+            "/apis/kubevirt.io/v1/namespaces/default/virtualmachines/" + vm_name + "?removedDisks=disk-0&?removedDisks=disk-0&propagationPolicy=Foreground"
+        deleteResponse = delete_request(delete_vm_url, harvester_token)
+        print(deleteResponse.status_code)
+        if deleteResponse.status_code == 200:
+            print("VM Deleted Successfully")
+        else:
+            print("Error deleting VM")
+            pprint(deleteResponse.text.strip())
+            sys.exit(1)
+    except:
+        print("Error deleting VM")
+        sys.exit(1)
 
 def get_node_names():
     query_url = harvester_url + "/v1/harvester/nodes"
@@ -1158,8 +1227,8 @@ def handle_event(encoded_data):
             delete_lab(data['data'])
         if data['type'] == "course":
             delete_course(data['data'])
-        # elif data['type'] == "vm":
-        #     delete_vm(data['data'])
+        elif data['type'] == "vm":
+            delete_vm(data['data'])
 
 
 if __name__ == "__main__":
