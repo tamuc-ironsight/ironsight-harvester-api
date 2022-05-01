@@ -86,6 +86,8 @@ if __name__ == "__main__":
             data["data"]["template_override"]["running"] = bool(input(
                 "Enter Is Running (0-1): ") == "1")
             send_event(data)
+        if choice == "2":
+            print("Update Virtual Machine")
         if choice == "3":
             print("Delete Virtual Machine")
             print("======================")
@@ -101,6 +103,26 @@ if __name__ == "__main__":
                 send_event(data)
             else:
                 print("Exiting...")
-    
+    if choice == "2":
+        sub_menu()
+        choice = input("Enter your choice: ")
+        if choice == "1":
+            print("Create Lab")
+            print("======================")
+        if choice == "2":
+            print("Update Lab")
+        if choice == "3":
+            print("Delete Lab")
+            print("======================")
+            data["action"] = "delete"
+            data["type"] = "lab"
+            data["data"] = {}
+            data["data"]["lab_num"] = str(input("Enter lab number: "))
+            print("Are you sure you want to delete " + data["data"]["lab_num"] + "? (y/N)")
+            choice = input("Enter your choice: ")
+            if choice == "y":
+                send_event(data)
+            else:
+                print("Exiting...")
     if choice == "4":
         ironsight.list_templates()

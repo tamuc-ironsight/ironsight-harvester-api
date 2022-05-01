@@ -482,7 +482,10 @@ def delete_lab(lab_data):
     labs = get_labs()
     labs = json.loads(labs)
     for lab in labs:
-        if lab['lab_name'] == lab_data['lab_name']:
+        lab['lab_num'] = str(lab['lab_num'])
+        print("Checking lab: " + lab['lab_name'] + ", " + lab['lab_num'])
+        if lab['lab_num'] == lab_data['lab_num']:
+            print("Lab exists")
             # Delete lab from many-to-many relationship between courses and labs ("courses_has_labs")
             query = "DELETE FROM courses_has_labs WHERE `lab_num` = '" + \
                 str(lab['lab_num']) + "'"
@@ -508,7 +511,7 @@ def delete_lab(lab_data):
                 str(lab['lab_num']) + "'"
             ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
 
-    print("Successfully deleted lab: " + lab_data['lab_name'])
+    print("Successfully deleted lab: " + lab_data['lab_num'])
 
 
 def create_course(course_data):
