@@ -126,3 +126,35 @@ if __name__ == "__main__":
                 print("Exiting...")
     if choice == "4":
         ironsight.list_templates()
+    if choice == "5":
+        sub_menu()
+        choice = input("Enter your choice: ")
+        if choice == "1":
+            print("Create Course")
+            print("======================")
+        if choice == "2":
+            print("Update Course")
+        if choice == "3":
+            print("Delete Course")
+            print("======================")
+            data["action"] = "delete"
+            data["type"] = "course"
+            data["data"] = {}
+            data["data"]["course_id"] = str(input("Enter course ID: "))
+            print("Are you sure you want to delete " + data["data"]["course_id"] + "? (y/N)")
+            choice = input("Enter your choice: ")
+            if choice == "y":
+                send_event(data)
+            else:
+                print("Exiting...")
+    if choice == "6":
+        sub_menu()
+        choice = input("Enter your choice: ")
+        if choice == "1":
+            print("Create Tag")
+            print("======================")
+        if choice == "2":
+            print("Update Tag")
+        if choice == "3":
+            print("Delete Tag")
+            print("======================")
