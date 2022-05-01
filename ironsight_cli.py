@@ -124,6 +124,36 @@ if __name__ == "__main__":
                 send_event(data)
             else:
                 print("Exiting...")
+    if choice == "3":
+        sub_menu()
+        choice = input("Enter your choice: ")
+        if choice == "1":
+            print("Create User")
+            print("======================")
+            data["action"] = "create"
+            data["type"] = "user"
+            data["data"] = {}
+            data["data"]["first_name"] = input("Enter first name: ")
+            data["data"]["last_name"] = input("Enter last name: ")
+            data["data"]["user_name"] = input("Enter user name: ")
+            data["data"]["user_password"] = input("Enter user password: ")
+            send_event(data)
+        if choice == "2":
+            print("Update User")
+        if choice == "3":
+            print("Delete User")
+            print("======================")
+            data["action"] = "delete"
+            data["type"] = "user"
+            data["data"] = {}
+            data["data"]["user_name"] = input("Enter user name: ")
+            print("Are you sure you want to delete " + data["data"]["user_name"] + "? (y/N)")
+            choice = input("Enter your choice: ")
+            if choice == "y":
+                send_event(data)
+            else:
+                print("Exiting...")
+
     if choice == "4":
         ironsight.list_templates()
     if choice == "5":
