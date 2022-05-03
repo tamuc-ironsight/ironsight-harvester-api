@@ -834,7 +834,7 @@ def create_vm(vm_data):
         # Many-to-many relationship between virtual machines and labs
         if lab_num != "":
             query = str("INSERT INTO virtual_machine_has_labs (vm_name, lab_num) VALUES ('" +
-                        vm_name + "', '" + lab_num + "')")
+                        vm_name + "', '" + str(lab_num) + "')")
             ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
         else:
             print("No lab specified, skipping lab insertion")
