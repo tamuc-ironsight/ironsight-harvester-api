@@ -391,7 +391,10 @@ def create_user(user_data):
     else:
         user_password = "1"
     if 'profile_pic_data' in user_data:
-        profile_pic_data = user_data['profile_pic_data']
+        if user_data['profile_pic_data'] != "":
+            profile_pic_data = user_data['profile_pic_data']
+        else:
+            profile_pic_data = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__480.png"
     else:
         profile_pic_data = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__480.png"
 
