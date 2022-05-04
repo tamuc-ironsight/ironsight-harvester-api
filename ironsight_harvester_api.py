@@ -11,6 +11,7 @@ import random
 import string
 import sys
 import base64
+import subprocess
 
 # Determine if config.json is here or in parent directory
 
@@ -373,15 +374,38 @@ def create_user(user_data):
             return
 
     # Get the courses, tags, and roles for the user
-    courses = user_data['courses']
-    tags = user_data['tags']
-    roles = user_data['roles']
+    if 'courses' in user_data:
+        courses = user_data['courses']
+    else:
+        courses = []
+    if 'tags' in user_data:
+        tags = user_data['tags']
+    else:
+        tags = []
+    if 'roles' in user_data:
+        roles = user_data['roles']
+    else:
+        roles = []
+    if 'user_password' in user_data:
+        user_password = user_data['user_password']
+    else:
+        user_password = "1"
+    if 'profile_pic_data' in user_data:
+        profile_pic_data = user_data['profile_pic_data']
+    else:
+        profile_pic_data = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460__480.png"
+
+    # Run mkpasswd --method=SHA-512 --rounds=4096 to generate the password hash
+    user_password = subprocess.check_output(
+        "mkpasswd --method=SHA-512 --rounds=4096 " + user_password, shell=True)
+    user_password = user_password.decode("utf-8")
+    user_password = user_password.rstrip()
 
     # Create user
     query = "INSERT INTO users (`user_name`, `first_name`, `last_name`, `password`, `profile_pic_data`) VALUES ('" + \
         user_data['user_name'] + "', '" + user_data['first_name'] + "', '" + user_data['last_name'] + \
-            "', '" + user_data['password'] + "', '" + \
-        user_data['profile_pic_data'] + "')"
+            "', '" + user_password + "', '" + \
+        profile_pic_data + "')"
     ironsight_sql.query(query, sql_server, sql_user, sql_pass, sql_db)
 
     # Insert the user into the many-to-many relationship between courses and users ("courses_has_users")
