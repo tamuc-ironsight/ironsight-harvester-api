@@ -386,8 +386,8 @@ def create_user(user_data):
         roles = user_data['roles']
     else:
         roles = []
-    if 'user_password' in user_data:
-        user_password = user_data['user_password']
+    if 'password' in user_data:
+        user_password = user_data['password']
     else:
         user_password = "1"
     if 'profile_pic_data' in user_data:

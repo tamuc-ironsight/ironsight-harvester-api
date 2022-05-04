@@ -136,7 +136,7 @@ if __name__ == "__main__":
             data["data"]["first_name"] = input("Enter first name: ")
             data["data"]["last_name"] = input("Enter last name: ")
             data["data"]["user_name"] = input("Enter user name: ")
-            data["data"]["user_password"] = input("Enter user password: ")
+            data["data"]["password"] = input("Enter user password: ")
             send_event(data)
         if choice == "2":
             print("Update User")
